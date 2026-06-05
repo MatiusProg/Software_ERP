@@ -6,11 +6,14 @@
 <meta name="theme-color" content="#1b3a2b">
 <title>Listas de Compras</title>
 
-<!-- ============ PWA: manifest embebido como data-URI ============ -->
-<link rel="manifest" href='data:application/manifest+json,{"name":"Listas de Compras","short_name":"Listas","start_url":".","display":"standalone","background_color":"%23f4efe3","theme_color":"%231b3a2b","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%231b3a2b%27/%3E%3Ctext x=%2796%27 y=%27130%27 font-size=%27110%27 text-anchor=%27middle%27%3E%F0%9F%9B%92%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"}]}'>
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%231b3a2b%27/%3E%3Ctext x=%2796%27 y=%27130%27 font-size=%27110%27 text-anchor=%27middle%27%3E%F0%9F%9B%92%3C/text%3E%3C/svg%3E">
+<!-- ============ PWA: archivos reales (mejor detección de instalación) ============ -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Listas">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <style>
   /* ===================== Tema / Variables ===================== */
@@ -700,9 +703,9 @@ function escapeAttr(s){ return String(s).replace(/"/g,"&quot;").replace(/</g,"&l
 render();
 
 if("serviceWorker" in navigator){
-  const sw = `self.addEventListener("install",e=>self.skipWaiting());self.addEventListener("activate",e=>self.clients.claim());self.addEventListener("fetch",()=>{});`;
-  const blob = new Blob([sw],{type:"text/javascript"});
-  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+  });
 }
 </script>
 </body>

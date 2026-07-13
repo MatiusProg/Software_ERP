@@ -43,14 +43,14 @@ Detener: `Ctrl + C`.
 
 Con el servidor corriendo, en **otra** terminal Git Bash:
 
-### Registrar un negocio nuevo (crea usuario + organización + owner)
+### Registrar un negocio nuevo (crea usuario + organización + propietario)
 ```bash
-curl -X POST http://127.0.0.1:8000/api/register/ \
+curl -X POST http://127.0.0.1:8000/api/registro/ \
   -H "Content-Type: application/json" \
-  -d '{"email":"prueba@negocio.test","password":"clave12345","full_name":"Prueba","organization_name":"Negocio Prueba"}'
+  -d '{"email":"prueba@negocio.test","password":"clave12345","nombre_completo":"Prueba","nombre_organizacion":"Negocio Prueba"}'
 ```
 
-### Login (obtener token JWT)
+### Login (obtener token JWT — queda registrado en la bitácora)
 ```bash
 curl -X POST http://127.0.0.1:8000/api/auth/token/ \
   -H "Content-Type: application/json" \
@@ -58,9 +58,9 @@ curl -X POST http://127.0.0.1:8000/api/auth/token/ \
 ```
 Devuelve `access` y `refresh`. Copia el valor de `access`.
 
-### Ver mi perfil y organización activa (ruta protegida)
+### Ver mi perfil, organización y rol activos (ruta protegida)
 ```bash
-curl http://127.0.0.1:8000/api/me/ -H "Authorization: Bearer PEGA_AQUI_EL_ACCESS"
+curl http://127.0.0.1:8000/api/yo/ -H "Authorization: Bearer PEGA_AQUI_EL_ACCESS"
 ```
 
 ### Truco: guardar el token en una variable automáticamente
@@ -70,9 +70,10 @@ TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/auth/token/ \
   -d '{"email":"prueba@negocio.test","password":"clave12345"}' \
   | python -c "import sys,json;print(json.load(sys.stdin)['access'])")
 
-curl http://127.0.0.1:8000/api/me/ -H "Authorization: Bearer $TOKEN"
+curl http://127.0.0.1:8000/api/yo/ -H "Authorization: Bearer $TOKEN"
 ```
-Si `active_organization` NO es null, el aislamiento multi-tenant funciona. ✅
+Si `organizacion_activa` NO es null y `rol_activo` es `propietario`, el
+aislamiento multi-tenant y los roles funcionan. ✅
 
 ---
 
@@ -90,7 +91,9 @@ python manage.py dbshell
 ```bash
 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -h 127.0.0.1 -d erp_dev
 ```
-Dentro: `\dt` (tablas), `SELECT * FROM accounts_organization;`, `\q` (salir).
+Dentro: `\dt` (tablas), `SELECT * FROM organizacion;`, `SELECT * FROM bitacora;`,
+`\q` (salir). Tablas de dominio en español: `organizacion`, `usuario`,
+`membresia`, `bitacora`, `bitacora_detalle`.
 
 ---
 

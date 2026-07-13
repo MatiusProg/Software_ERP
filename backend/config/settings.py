@@ -45,8 +45,9 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     # Propias
-    "apps.common",
-    "apps.accounts",
+    "apps.comun",
+    "apps.cuentas",
+    "apps.auditoria",
 ]
 
 MIDDLEWARE = [
@@ -60,7 +61,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Resuelve la organización activa del request y la deja en un thread-local
     # para el scoping multi-tenant. Debe ir DESPUÉS de AuthenticationMiddleware.
-    "apps.common.middleware.CurrentOrganizationMiddleware",
+    "apps.comun.middleware.CurrentOrganizationMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -101,7 +102,7 @@ DATABASES = {
 # ----------------------------------------------------------------------------
 # Auth
 # ----------------------------------------------------------------------------
-AUTH_USER_MODEL = "accounts.User"
+AUTH_USER_MODEL = "cuentas.Usuario"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -116,7 +117,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # ----------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "apps.common.authentication.TenantJWTAuthentication",
+        "apps.comun.authentication.TenantJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",

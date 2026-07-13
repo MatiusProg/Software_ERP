@@ -42,8 +42,8 @@ Doble público:
 | Fase | Módulo | Contenido | Estado |
 |---|---|---|---|
 | 0 | Cimientos multi-tenant | Organizacion, Usuario, Membresia, JWT, base tenant | ✅ |
-| 1 | Seguridad + Auditoría | Refactor a español; roles/permisos en la API; bitácora + detalle | ⏳ |
-| 2 | Catálogo y Terceros | Categoría, Producto (con precios mín/máx), Historial de precios, Tercero (cliente/proveedor/transportadora) con ubicación y contactos | pendiente |
+| 1 | Seguridad + Auditoría | Refactor a español; roles/permisos en la API; bitácora + detalle | ✅ |
+| 2 | Catálogo y Terceros | Categoría, Producto (con precios mín/máx), Historial de precios, Tercero (cliente/proveedor/transportadora) con ubicación y contactos | ⏳ siguiente |
 | 3 | Ventas, Cotizaciones y Listas | Cotización, Venta (nota de venta), Lista de pendientes; **conectar la PWA** | pendiente |
 | 4 | Compras e Inventario | Compra (nota de compra), Almacén, Movimientos de stock | pendiente |
 | 5 | Reportes y Exportables | Reportes de ventas; exportar PDF (listas, notas A4 y ticket 80mm) | pendiente |

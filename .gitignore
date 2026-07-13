@@ -1,0 +1,36 @@
+# ==========================================================================
+# .gitignore raíz del monorepo (backend/ tiene además el suyo propio)
+# ==========================================================================
+
+# --- Editores / IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- Sistema operativo ---
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# --- Secretos / entorno ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+db.sqlite3
+
+# --- Node / frontend (para cuando exista) ---
+node_modules/
+dist/
+build/
+.cache/
+
+# --- Logs ---
+*.log

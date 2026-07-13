@@ -1,0 +1,19 @@
+# Entorno virtual
+.venv/
+
+# Secretos / configuración local
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Django
+db.sqlite3
+/staticfiles/
+/media/
+
+# Editor
+.vscode/
+.idea/

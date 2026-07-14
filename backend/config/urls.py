@@ -11,4 +11,7 @@ urlpatterns = [
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     # Cuentas (registro, perfil)
     path("api/", include("apps.cuentas.urls")),
+    # Catálogo (categorías, productos) y terceros (clientes/proveedores/transportadoras)
+    path("api/", include("apps.catalogo.urls")),
+    path("api/", include("apps.terceros.urls")),
 ]

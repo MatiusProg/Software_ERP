@@ -1,7 +1,7 @@
 # Plan del Sistema ERP
 
 Documento vivo del proyecto. Resume visión, arquitectura, decisiones y roadmap.
-Última actualización: 2026-07-12.
+Última actualización: 2026-07-13.
 
 ---
 
@@ -36,6 +36,12 @@ Doble público:
 4. **PWA doble modo**: local (sin login) y conectado (sincroniza con la API).
 5. **Impresión**: notas en formato **ticket térmico 80mm (ESC/POS)** —
    impresora barata y estándar— además de PDF A4 para reportes.
+6. **Terceros con roles múltiples**: un tercero puede ser cliente y proveedor a la
+   vez → flags `es_cliente` / `es_proveedor` / `es_transportadora` en lugar de un
+   único campo `tipo` (evita duplicar el mismo tercero).
+7. **CRUD con ViewSets**: desde la Fase 2 la API usa `ModelViewSet` + router DRF,
+   con paginación global, `django-filter` y búsqueda/orden. Base común
+   `TenantModelViewSet` (queryset scopeado al tenant + permisos por rol).
 
 ## 4. Roadmap por fases
 
@@ -62,11 +68,21 @@ Doble público:
 - `bitacora_detalle` — bitacora, campo, valor_anterior, valor_nuevo.
 
 **catalogo**
-- `categoria` — nombre, descripción.
-- `producto` — sku, nombre, categoria, unidad, `precio_venta`, `precio_venta_minimo`,
-  `precio_compra`, `precio_compra_maximo`, stock, impuesto, activo.
+- `categoria` — nombre, descripción. `sku`/`nombre` únicos **por organización**.
+- `producto` — sku, `codigo_barras` (opcional, único por org, indexado — POS/escáner),
+  nombre, categoria, unidad, `es_servicio` (bool: servicio sin stock),
+  `precio_venta`, `precio_venta_minimo`, `precio_compra`, `precio_compra_maximo`,
+  `stock`, `impuesto` (IVA 13% por defecto), `activo` (soft-delete). `sku` único por
+  organización. Validación: `precio_venta_minimo ≤ precio_venta` y
+  `precio_compra ≤ precio_compra_maximo`. El `stock` es un decimal editable simple en
+  esta fase; en la Fase 4 pasa a ser la suma cacheada de `movimiento_stock` (patrón de
+  triggers de stock visto en el POS de referencia). `codigo_barras` y `es_servicio`
+  provienen de aprendizajes del POS real (ver [[repos-referencia-previos]]).
 - `historial_precio` — producto, tipo (venta/compra/min/max), valor, fecha, usuario.
-- `tercero` — tipo (cliente/proveedor/transportadora), nombre, nit_ci, notas.
+  Se **llena solo por señal** cuando cambia algún precio del producto (para reportes
+  de precios; la bitácora es aparte, para cumplimiento).
+- `tercero` — nombre, nit_ci (opcional, no único global), notas, `activo`,
+  y flags `es_cliente` / `es_proveedor` / `es_transportadora` (ver decisión 6).
 - `contacto_tercero` — tercero, tipo (teléfono/email/whatsapp), valor.
 - `ubicacion_tercero` — tercero, direccion, ciudad, referencia, lat, lng.
 

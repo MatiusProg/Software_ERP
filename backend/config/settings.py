@@ -43,11 +43,14 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Terceros
     "rest_framework",
+    "django_filters",
     "corsheaders",
     # Propias
     "apps.comun",
     "apps.cuentas",
     "apps.auditoria",
+    "apps.catalogo",
+    "apps.terceros",
 ]
 
 MIDDLEWARE = [
@@ -122,6 +125,13 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 25,
 }
 
 from datetime import timedelta  # noqa: E402

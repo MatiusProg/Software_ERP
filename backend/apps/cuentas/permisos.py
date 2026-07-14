@@ -52,3 +52,23 @@ class SoloLecturaOAdmin(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return rol in ("propietario", "admin")
+
+
+class MiembroEscribeAdminBorra(BasePermission):
+    """Lectura: cualquier miembro. Crear/editar: propietario/admin/vendedor.
+    Borrar: solo propietario/admin.
+
+    Pensado para datos operativos que el vendedor gestiona en su día a día
+    (terceros/clientes, y más adelante las ventas)."""
+
+    message = "No tienes permiso para esta acción."
+
+    def has_permission(self, request, view):
+        rol = rol_actual(request)
+        if rol is None:
+            return False
+        if request.method in SAFE_METHODS:
+            return True
+        if request.method == "DELETE":
+            return rol in ("propietario", "admin")
+        return rol in ("propietario", "admin", "vendedor")

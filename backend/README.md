@@ -1,4 +1,4 @@
-# Backend ERP — Guía rápida (Fase 0)
+# Backend ERP — Guía rápida
 
 Backend Django + DRF, multi-tenant (SaaS). PostgreSQL local en desarrollo.
 Comandos pensados para **Git Bash** (tu shell). Notas de PowerShell al final.
@@ -75,6 +75,49 @@ curl http://127.0.0.1:8000/api/yo/ -H "Authorization: Bearer $TOKEN"
 Si `organizacion_activa` NO es null y `rol_activo` es `propietario`, el
 aislamiento multi-tenant y los roles funcionan. ✅
 
+### Endpoints de catálogo y terceros (Fase 2)
+
+Todos requieren `Authorization: Bearer $TOKEN`. Todo queda aislado por
+organización y auditado. Listados paginados (25/pág) con búsqueda (`?search=`),
+filtros y orden (`?ordering=`).
+
+**Permisos por rol:**
+
+| Recurso | Leer | Crear / editar | Borrar |
+|---|---|---|---|
+| Categorías, Productos | cualquier miembro | propietario, admin | propietario, admin |
+| Terceros (clientes) | cualquier miembro | propietario, admin, **vendedor** | propietario, admin |
+
+> El **vendedor** ya ve todos los campos del producto, **incluido el precio de
+> venta mínimo** (el piso para negociar). El precio real según cantidad, promo o
+> venta de varios productos es lógica de la **Fase 3 (ventas)**, que respeta ese
+> mínimo. El vendedor puede registrar clientes (terceros) al vender, pero no
+> borrarlos.
+
+```bash
+# Categorías
+curl http://127.0.0.1:8000/api/categorias/ -H "Authorization: Bearer $TOKEN"
+curl -X POST http://127.0.0.1:8000/api/categorias/ -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"nombre":"Bebidas"}'
+
+# Productos (filtros: categoria, unidad, es_servicio, activo | search: sku, código, nombre)
+curl "http://127.0.0.1:8000/api/productos/?search=coca&activo=true" -H "Authorization: Bearer $TOKEN"
+curl -X POST http://127.0.0.1:8000/api/productos/ -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"P001","nombre":"Coca 2L","precio_venta":"12.00","precio_compra":"9.00"}'
+
+# Historial de precios de un producto (se llena solo al cambiar un precio)
+curl http://127.0.0.1:8000/api/productos/1/historial_precios/ -H "Authorization: Bearer $TOKEN"
+
+# Terceros (filtros: es_cliente, es_proveedor, es_transportadora, activo)
+curl "http://127.0.0.1:8000/api/terceros/?es_proveedor=true" -H "Authorization: Bearer $TOKEN"
+curl -X POST http://127.0.0.1:8000/api/terceros/ -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"nombre":"Distribuidora Sur","es_proveedor":true,
+       "contactos":[{"tipo":"telefono","valor":"77712345"}],
+       "ubicaciones":[{"direccion":"Av. Siempre Viva 123","ciudad":"Santa Cruz"}]}'
+```
+
 ---
 
 ## 4. Entrar a la base de datos
@@ -103,7 +146,8 @@ Dentro: `\dt` (tablas), `SELECT * FROM organizacion;`, `SELECT * FROM bitacora;`
 python manage.py createsuperuser        # crear otro admin
 python manage.py makemigrations         # generar migraciones tras cambiar modelos
 python manage.py migrate                # aplicar migraciones
-python manage.py test                   # correr pruebas automatizadas (aún no hay)
+python manage.py test                   # correr todas las pruebas automatizadas
+python manage.py test apps.catalogo apps.terceros   # solo catálogo y terceros (Fase 2)
 python manage.py shell                  # consola de Python con Django cargado
 ```
 
@@ -115,8 +159,9 @@ python manage.py shell                  # consola de Python con Django cargado
 backend/
 ├─ config/            # settings, urls, wsgi
 ├─ apps/
-│  ├─ common/         # base multi-tenant (TenantModel, middleware, auth JWT)
-│  └─ accounts/       # Organization, User, Membership + API
+│  ├─ comun/          # base multi-tenant (ModeloTenant, middleware, auth JWT)
+│  ├─ cuentas/        # Organizacion, Usuario, Membresia + API (registro, login, yo)
+│  └─ auditoria/      # Bitacora + BitacoraDetalle (auditoría automática por señales)
 ├─ .env               # secretos locales (NO se sube a git)
 ├─ .env.example       # plantilla
 └─ manage.py

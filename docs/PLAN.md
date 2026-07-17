@@ -61,6 +61,10 @@ Doble público:
 | 6 | Pagos QR (Bolivia) | Integración QR (QR Simple BCB vía banco/agregador) — requiere investigación y acuerdo comercial | investigación |
 | 7 | Monetización + Facturación | Planes/suscripción de tenants; facturación electrónica (SIN) si el cliente lo pide | futuro |
 
+> **Fase 3 en curso:** el **backend está terminado y probado** (apps `ventas` y
+> `tienda`, 40 pruebas). Falta el frontend (panel React + conectar la PWA). El plan
+> detallado para continuar está en **[`FASE3-PENDIENTE.md`](FASE3-PENDIENTE.md)**.
+
 ## 5. Modelo de datos (bosquejo, en español)
 
 **cuentas (seguridad/tenancy)**

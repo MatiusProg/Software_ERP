@@ -4,9 +4,12 @@ Plataforma **ERP SaaS multi-tenant** para pequeños negocios: catálogo, ventas,
 cotizaciones, compras e inventario. Nace de una PWA de listas de compras y
 cotizaciones, que se convierte en el cliente ligero móvil del sistema.
 
-> Estado: **Fase 1 completada** — sobre los cimientos multi-tenant se sumaron
-> seguridad (roles/permisos en la API) y auditoría (bitácora + detalle).
-> **Fase 2 (Catálogo y Terceros) en curso.** Ver el [roadmap](#roadmap).
+> Estado: **Fase 2 completada** — sobre los cimientos multi-tenant (Fase 0) y la
+> seguridad + auditoría (Fase 1) se sumaron el catálogo (categorías, productos con
+> precios e historial) y los terceros (cliente/proveedor/transportadora). API
+> cubierta por **17 pruebas automatizadas** (todas en verde).
+> **Siguiente: Fase 3 (Ventas, Cotizaciones y Listas + conectar la PWA).**
+> Ver el [roadmap](#roadmap).
 
 ## Arquitectura
 
@@ -37,9 +40,9 @@ la base de datos).
 
 - **Fase 0 — Cimientos multi-tenant** ✅ Organización, Usuario, Membresía, JWT.
 - **Fase 1 — Seguridad + Auditoría** ✅ Roles/permisos en la API; bitácora + detalle.
-- **Fase 2 — Catálogo y Terceros** ⏳ Categorías, Productos (con precios e historial),
-  Terceros (cliente/proveedor/transportadora) con contactos y ubicación.
-- **Fase 3 — Ventas, Cotizaciones y Listas** + conectar la PWA a la API.
+- **Fase 2 — Catálogo y Terceros** ✅ Categorías, Productos (con precios e historial),
+  Terceros (cliente/proveedor/transportadora) con contactos y ubicación. (17 pruebas)
+- **Fase 3 — Ventas, Cotizaciones y Listas** ⏳ + conectar la PWA a la API.
 - **Fase 4 — Compras e Inventario** Compras, almacenes y movimientos de stock.
 - **Fase 5 — Reportes y Exportables** (PDF A4 y ticket térmico 80mm).
 - **Fase 6 — Pagos QR (Bolivia)** — QR Simple del BCB (en investigación).

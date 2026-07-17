@@ -1,7 +1,7 @@
 # Plan del Sistema ERP
 
 Documento vivo del proyecto. Resume visión, arquitectura, decisiones y roadmap.
-Última actualización: 2026-07-13.
+Última actualización: 2026-07-16.
 
 ---
 
@@ -42,6 +42,11 @@ Doble público:
 7. **CRUD con ViewSets**: desde la Fase 2 la API usa `ModelViewSet` + router DRF,
    con paginación global, `django-filter` y búsqueda/orden. Base común
    `TenantModelViewSet` (queryset scopeado al tenant + permisos por rol).
+8. **Escaparate público (app `tienda`)**: endpoints anónimos de solo-lectura que
+   exponen el catálogo de un negocio por su `slug` (`/api/tienda/<slug>/productos/`),
+   sin login y sin costos/mínimos/stock. Es la base del doble modo: mirar no exige
+   cuenta; registrarse suma funciones. El aislamiento aquí viene del `slug`, no del
+   tenant activo (se usa el manager `todos` + filtro explícito por organización).
 
 ## 4. Roadmap por fases
 
@@ -49,8 +54,8 @@ Doble público:
 |---|---|---|---|
 | 0 | Cimientos multi-tenant | Organizacion, Usuario, Membresia, JWT, base tenant | ✅ |
 | 1 | Seguridad + Auditoría | Refactor a español; roles/permisos en la API; bitácora + detalle | ✅ |
-| 2 | Catálogo y Terceros | Categoría, Producto (con precios mín/máx), Historial de precios, Tercero (cliente/proveedor/transportadora) con ubicación y contactos | ⏳ siguiente |
-| 3 | Ventas, Cotizaciones y Listas | Cotización, Venta (nota de venta), Lista de pendientes; **conectar la PWA** | pendiente |
+| 2 | Catálogo y Terceros | Categoría, Producto (con precios mín/máx), Historial de precios, Tercero (cliente/proveedor/transportadora) con ubicación y contactos | ✅ (17 pruebas) |
+| 3 | Ventas, Cotizaciones y Listas | Cotización, Venta (nota de venta), Lista de pendientes; **conectar la PWA** | ⏳ siguiente |
 | 4 | Compras e Inventario | Compra (nota de compra), Almacén, Movimientos de stock | pendiente |
 | 5 | Reportes y Exportables | Reportes de ventas; exportar PDF (listas, notas A4 y ticket 80mm) | pendiente |
 | 6 | Pagos QR (Bolivia) | Integración QR (QR Simple BCB vía banco/agregador) — requiere investigación y acuerdo comercial | investigación |

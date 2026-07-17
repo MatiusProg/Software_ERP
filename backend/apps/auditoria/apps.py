@@ -18,6 +18,9 @@ class AuditoriaConfig(AppConfig):
             ("catalogo", "Categoria"),
             ("catalogo", "Producto"),
             ("terceros", "Tercero"),
+            ("ventas", "Cotizacion"),
+            ("ventas", "Venta"),
+            ("ventas", "VentaDetalle"),
         ]
         for app_label, model_name in etiquetas:
             try:

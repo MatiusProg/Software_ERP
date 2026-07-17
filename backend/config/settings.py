@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "apps.auditoria",
     "apps.catalogo",
     "apps.terceros",
+    "apps.ventas",
+    "apps.tienda",
 ]
 
 MIDDLEWARE = [

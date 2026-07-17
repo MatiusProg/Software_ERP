@@ -118,6 +118,70 @@ curl -X POST http://127.0.0.1:8000/api/terceros/ -H "Authorization: Bearer $TOKE
        "ubicaciones":[{"direccion":"Av. Siempre Viva 123","ciudad":"Santa Cruz"}]}'
 ```
 
+### Endpoints de ventas, cotizaciones y listas (Fase 3)
+
+Cabecera + detalle, aislados por organización y auditados (venta y cotización).
+Permiso `MiembroEscribeAdminBorra`: **el vendedor puede crear/editar** ventas,
+cotizaciones y listas; solo propietario/admin pueden borrar.
+
+Convenciones de las líneas (`detalles` / `items`):
+- **Modo directo** (por defecto): se manda `total` a mano.
+- **Modo unitario** (opcional): se mandan `cantidad` y `precio_unitario`; el
+  `total` se calcula (`cantidad × precio_unitario`).
+- `producto` es opcional (texto libre para la PWA). Los precios son **IVA
+  incluido**; el impuesto se discrimina en `impuesto_total`/`impuesto_monto`.
+- Número correlativo **por organización**: `V-0001`, `COT-0001` (se asigna solo).
+
+```bash
+# Venta de mostrador (cliente libre, línea en modo directo)
+curl -X POST http://127.0.0.1:8000/api/ventas/ -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"cliente_nombre":"Mostrador",
+       "detalles":[{"descripcion":"Coca 2L","total":"113.00","impuesto":"13.00"}]}'
+
+# Venta en modo unitario (cantidad × precio_unitario)
+curl -X POST http://127.0.0.1:8000/api/ventas/ -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"detalles":[{"descripcion":"Aceite","cantidad":"15","precio_unitario":"20.00"}]}'
+
+# Cotización → convertirla en venta (copia líneas, marca la cotización aceptada)
+curl -X POST http://127.0.0.1:8000/api/cotizaciones/1/convertir_en_venta/ \
+  -H "Authorization: Bearer $TOKEN"
+
+# Lista de pendientes (puente con la PWA; items marcables como comprados)
+curl -X POST http://127.0.0.1:8000/api/listas/ -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"titulo":"VENTA · MAMÁ DE KAREN",
+       "items":[{"descripcion":"Oreo","detalle":"(2)","total":"31.00","comprado":true},
+                {"descripcion":"Chicle","detalle":"(1/4)","total":"35.00"}]}'
+```
+
+Filtros: ventas (`estado`, `estado_pago`, `cliente`), cotizaciones (`estado`,
+`cliente`), listas (`estado`, `cliente`). Búsqueda por `numero`/`titulo`/
+`cliente_nombre`.
+
+### Escaparate público (Fase 3) — sin login
+
+Base del "modo tienda que no pierde simplicidad": un visitante **anónimo** navega
+el catálogo de un negocio por su `slug`, **sin registrarse**. Solo expone campos
+públicos (precio de venta), nunca costos, mínimo de negociación ni stock. Solo
+organizaciones activas y productos activos.
+
+```bash
+# Datos públicos del negocio
+curl http://127.0.0.1:8000/api/tienda/negocio-prueba/
+
+# Catálogo público (filtros: categoria, es_servicio | search: nombre, sku, código)
+curl "http://127.0.0.1:8000/api/tienda/negocio-prueba/productos/?search=coca"
+
+# Categorías públicas
+curl http://127.0.0.1:8000/api/tienda/negocio-prueba/categorias/
+```
+
+> `negocio-prueba` es el `slug` de la organización (se genera al registrar el
+> negocio). Registrarse suma funciones (sincronizar listas, pedir); mirar no exige
+> cuenta.
+
 ---
 
 ## 4. Entrar a la base de datos
@@ -147,7 +211,8 @@ python manage.py createsuperuser        # crear otro admin
 python manage.py makemigrations         # generar migraciones tras cambiar modelos
 python manage.py migrate                # aplicar migraciones
 python manage.py test                   # correr todas las pruebas automatizadas
-python manage.py test apps.catalogo apps.terceros   # solo catálogo y terceros (Fase 2)
+python manage.py test apps.catalogo apps.terceros   # Fase 2 (17 pruebas)
+python manage.py test apps.ventas apps.tienda        # Fase 3 (23 pruebas)
 python manage.py shell                  # consola de Python con Django cargado
 ```
 
@@ -161,7 +226,11 @@ backend/
 ├─ apps/
 │  ├─ comun/          # base multi-tenant (ModeloTenant, middleware, auth JWT)
 │  ├─ cuentas/        # Organizacion, Usuario, Membresia + API (registro, login, yo)
-│  └─ auditoria/      # Bitacora + BitacoraDetalle (auditoría automática por señales)
+│  ├─ auditoria/      # Bitacora + BitacoraDetalle (auditoría automática por señales)
+│  ├─ catalogo/       # Categoria, Producto, HistorialPrecio (Fase 2)
+│  ├─ terceros/       # Tercero + contactos/ubicaciones (Fase 2)
+│  ├─ ventas/         # Cotizacion, Venta, Lista + detalles (Fase 3)
+│  └─ tienda/         # escaparate público del catálogo por slug (Fase 3)
 ├─ .env               # secretos locales (NO se sube a git)
 ├─ .env.example       # plantilla
 └─ manage.py

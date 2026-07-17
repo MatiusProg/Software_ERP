@@ -14,4 +14,8 @@ urlpatterns = [
     # Catálogo (categorías, productos) y terceros (clientes/proveedores/transportadoras)
     path("api/", include("apps.catalogo.urls")),
     path("api/", include("apps.terceros.urls")),
+    # Ventas, cotizaciones y listas (Fase 3)
+    path("api/", include("apps.ventas.urls")),
+    # Escaparate público (catálogo por slug, sin login)
+    path("api/", include("apps.tienda.urls")),
 ]

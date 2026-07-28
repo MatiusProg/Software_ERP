@@ -1,5 +1,8 @@
 // Service worker para que la app sea instalable y funcione offline.
-const CACHE = "listas-compras-v1";
+// v2: la app ya habla con la API del ERP, así que el SW deja pasar de largo
+// todo lo que no sea de este mismo origen (si no, cachearía respuestas de la
+// API y, sin internet, devolvería el index.html en lugar de un error claro).
+const CACHE = "listas-compras-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -27,6 +30,8 @@ self.addEventListener("activate", (e) => {
 // Estrategia: red primero, con respaldo a caché (para usar sin internet).
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  // Las llamadas a la API (otro origen) no se tocan: van directo a la red.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then((res) => {

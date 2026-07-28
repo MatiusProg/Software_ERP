@@ -175,6 +175,11 @@
   .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:.88rem;font-family:ui-sans-serif,system-ui,sans-serif;opacity:0;pointer-events:none;transition:.25s;z-index:90;box-shadow:0 10px 30px -8px rgba(0,0,0,.5);max-width:90%;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+  /* Modal de conexión con el negocio */
+  .cloud-in{width:100%;font-family:ui-sans-serif,system-ui,sans-serif;font-size:.95rem;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;margin-bottom:9px;}
+  .cloud-in:focus{outline:none;border-color:var(--green-2);}
+  .cloud-err{font-family:ui-sans-serif,system-ui,sans-serif;font-size:.82rem;color:var(--accent);min-height:18px;}
+
   #fileInput{display:none;}
 </style>
 </head>
@@ -218,6 +223,22 @@
   </div>
 </div>
 
+<!-- Modal conectar con el negocio (opcional) -->
+<div class="modal-bg" id="cloudBg">
+  <div class="modal">
+    <h3>☁️ Conectar con mi negocio</h3>
+    <p>Opcional. Al conectarte puedes respaldar tus listas en el ERP y verlas en otro teléfono. Todo lo que ya tienes se queda igual en este dispositivo.</p>
+    <input id="cloudUrl" class="cloud-in" placeholder="Dirección del sistema" autocomplete="off" inputmode="url">
+    <input id="cloudEmail" class="cloud-in" placeholder="Correo" autocomplete="username" inputmode="email">
+    <input id="cloudPass" class="cloud-in" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <div id="cloudErr" class="cloud-err"></div>
+    <div class="row">
+      <button class="btn btn-light" onclick="closeCloudModal()">Cancelar</button>
+      <button class="btn btn-wa" onclick="doCloudLogin()">Conectar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -227,14 +248,20 @@
      activeId,
      mode: "compra" | "cotizacion",          // modo de vista actual
      clients: [
-       { id, name, base, date, items:[
-           { id, name, detail, price, done, quotePrice }
+       { id, name, base, date, remoteId, items:[
+           { id, name, detail, price, qty, unit, done, quotePrice, qqty, qunit }
        ]}
      ]
    }
    - price      = precio real de compra (total del ítem)
+   - qty/unit   = precio unitario OPCIONAL: si están, price = qty × unit
    - quotePrice = precio de cotización (independiente del real)
+   - qqty/qunit = lo mismo, para el precio de cotización
    - base       = true para los 3 clientes que no se pueden borrar
+   - remoteId   = id de la Lista en el ERP (solo si se subió a la nube)
+
+   Todo sigue viviendo en este dispositivo. La nube es opcional: conectarse
+   SUMA (respaldo y sincronización), nunca es requisito para usar la app.
    ========================================================================= */
 const STORE_KEY = "listasCompras_v2";
 const OLD_KEY   = "listasCompras_v1";
@@ -269,10 +296,44 @@ function normalize(s){
   s.clients.forEach((c,idx)=>{
     if(c.base===undefined) c.base = idx<3;
     if(c.quoteNum===undefined) c.quoteNum = 1;
-    c.items.forEach(i=>{ if(i.quotePrice===undefined) i.quotePrice=""; });
+    if(c.remoteId===undefined) c.remoteId = null;
+    c.items.forEach(i=>{
+      if(i.quotePrice===undefined) i.quotePrice="";
+      // Campos del precio unitario opcional (listas viejas no los tienen).
+      ["qty","unit","qqty","qunit"].forEach(k=>{ if(i[k]===undefined) i[k]=""; });
+    });
   });
   if(!s.activeId || !s.clients.find(c=>c.id===s.activeId)) s.activeId = s.clients[0].id;
   return s;
+}
+
+/* -------------------------------------------------------------------------
+   PRECIO UNITARIO (opt-in por ítem, sin cambiar la forma de escribir de siempre)
+
+   En cualquier campo de precio se puede escribir:
+     "113"      → total directo, como siempre
+     "6x18"     → 6 unidades a 18 = 108   (también "6 × 18" o "6*18")
+   Se guarda el desglose (qty/unit) y el total calculado, que es el que suman
+   los totales y el que viaja a la API.
+   ------------------------------------------------------------------------- */
+function parsePrice(raw){
+  const s = String(raw==null ? "" : raw).trim().replace(",",".");
+  if(!s) return { price:"", qty:"", unit:"" };
+  const m = s.match(/^([0-9]*\.?[0-9]+)\s*[x*×]\s*([0-9]*\.?[0-9]+)$/i);
+  if(m){
+    const q = parseFloat(m[1]), u = parseFloat(m[2]);
+    return { price: String(+(q*u).toFixed(2)), qty: String(q), unit: String(u) };
+  }
+  return { price:s, qty:"", unit:"" };
+}
+
+/** Texto "6 × 18" para mostrar el desglose, o "" si es un total directo. */
+function unitLabel(qty, unit){
+  return (qty && unit) ? `${fmt(qty)} × ${fmt(unit)}` : "";
+}
+/** Lo que se muestra dentro del campo de precio: conserva "6x18" si lo hubo. */
+function priceInputValue(price, qty, unit){
+  return (qty && unit) ? `${fmt(qty)}x${fmt(unit)}` : (price || "");
 }
 
 function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
@@ -286,8 +347,9 @@ function isQuote(){ return state.mode==="cotizacion"; }
    ========================================================================= */
 function render(){
   document.body.classList.toggle("quote-mode", isQuote());
+  const dondeSeGuarda = isConnected() ? "☁️ conectado al negocio" : "guardado en este dispositivo";
   document.getElementById("subtitle").textContent =
-    isQuote() ? "Modo cotización · precios por proveedor" : "Karen & yo · guardado en este dispositivo";
+    isQuote() ? `Modo cotización · ${dondeSeGuarda}` : `Karen & yo · ${dondeSeGuarda}`;
   renderClients();
   renderModeBar();
   renderCard();
@@ -346,7 +408,7 @@ function renderCard(){
       <div class="add-row">
         <form onsubmit="return addItem(event)">
           <input id="newName" placeholder="Producto nuevo del proveedor" autocomplete="off" required>
-          <input id="newPrice" class="price-in" placeholder="Precio" inputmode="decimal" autocomplete="off">
+          <input id="newPrice" class="price-in" placeholder="Precio o 6x18" inputmode="decimal" autocomplete="off">
           <button class="btn-add" type="submit">＋</button>
           <input id="newDetail" class="detail-in" placeholder="Detalle / unidad — opcional" autocomplete="off">
         </form>
@@ -389,12 +451,14 @@ function itemRow(i){
   const priceTxt = (i.price!=="" && i.price!=null)
       ? `<span class="price">= ${fmt(i.price)}</span>`
       : `<span class="price empty">—</span>`;
+  const unidad = unitLabel(i.qty, i.unit);
+  const sub = [i.detail, unidad].filter(Boolean).join(" · ");
   return `
     <li class="item">
       <div class="check ${i.done?"on":""}" onclick="toggleDone('${i.id}')">${i.done?"✓":""}</div>
       <div class="body" onclick="editItem('${i.id}')">
         <div class="name ${i.done?"done":""}">${escapeHtml(i.name)}</div>
-        ${ i.detail ? `<div class="detail">${escapeHtml(i.detail)}</div>` : "" }
+        ${ sub ? `<div class="detail">${escapeHtml(sub)}</div>` : "" }
       </div>
       ${priceTxt}
       <button class="del" onclick="delItem('${i.id}')" aria-label="Eliminar">×</button>
@@ -403,15 +467,17 @@ function itemRow(i){
 
 function quoteRow(i){
   const has = (i.quotePrice!=="" && i.quotePrice!=null);
+  const unidad = unitLabel(i.qqty, i.qunit);
   return `
     <li class="item ${has?"has-quote":""}">
       <div class="body">
         <div class="name" onclick="editItem('${i.id}')">${escapeHtml(i.name)}</div>
+        ${ unidad ? `<div class="detail">${escapeHtml(unidad)} = ${fmt(i.quotePrice)}</div>` : "" }
         <input class="qdetail" placeholder="detalle / unidad…" value="${escapeAttr(i.detail||"")}"
                onchange="setDetail('${i.id}', this.value)">
       </div>
       <div class="qprice">
-        <input inputmode="decimal" placeholder="—" value="${escapeAttr(i.quotePrice||"")}"
+        <input inputmode="decimal" placeholder="—" value="${escapeAttr(priceInputValue(i.quotePrice, i.qqty, i.qunit))}"
                onchange="setQuote('${i.id}', this.value)">
       </div>
       <button class="del" onclick="delItem('${i.id}')" aria-label="Eliminar">×</button>
@@ -442,12 +508,15 @@ function addItem(e){
   const price = document.getElementById("newPrice").value.trim();
   const detail = document.getElementById("newDetail").value.trim();
   if(!name) return false;
+  const p = parsePrice(price);   // acepta "18" o "6x18"
   if(isQuote()){
     // en cotización: el producto nuevo entra como PENDIENTE en la lista,
     // y el precio escrito (si hay) va al quotePrice, no al precio real.
-    activeClient().items.push({ id:uid(), name, detail, price:"", done:false, quotePrice:price });
+    activeClient().items.push({ id:uid(), name, detail, price:"", qty:"", unit:"",
+      done:false, quotePrice:p.price, qqty:p.qty, qunit:p.unit });
   } else {
-    activeClient().items.push({ id:uid(), name, detail, price, done: price!=="", quotePrice:"" });
+    activeClient().items.push({ id:uid(), name, detail, price:p.price, qty:p.qty, unit:p.unit,
+      done: p.price!=="", quotePrice:"", qqty:"", qunit:"" });
   }
   render();
   document.getElementById("newName").value="";
@@ -457,7 +526,10 @@ function addItem(e){
   return false;
 }
 function toggleDone(id){ const i=activeClient().items.find(x=>x.id===id); if(i){ i.done=!i.done; render(); } }
-function setQuote(id,val){ const i=activeClient().items.find(x=>x.id===id); if(i){ i.quotePrice=val.trim().replace(",","."); render(); } }
+function setQuote(id,val){
+  const i=activeClient().items.find(x=>x.id===id);
+  if(i){ const p=parsePrice(val); i.quotePrice=p.price; i.qqty=p.qty; i.qunit=p.unit; render(); }
+}
 function setDetail(id,val){ const i=activeClient().items.find(x=>x.id===id); if(i){ i.detail=val.trim(); render(); } }
 function delItem(id){ const c=activeClient(); c.items=c.items.filter(x=>x.id!==id); render(); }
 
@@ -469,13 +541,17 @@ function editItem(id){
   const detail = prompt("Detalle / unidad (opcional):", i.detail||"");
   if(detail===null) return;
   if(isQuote()){
-    const q = prompt("Precio de cotización (vacío = sin precio):", i.quotePrice||"");
+    const q = prompt("Precio de cotización — total o 6x18 (vacío = sin precio):",
+                     priceInputValue(i.quotePrice, i.qqty, i.qunit));
     if(q===null) return;
-    i.quotePrice = q.trim().replace(",",".");
+    const p = parsePrice(q);
+    i.quotePrice = p.price; i.qqty = p.qty; i.qunit = p.unit;
   } else {
-    const price = prompt("Precio total (vacío si aún no se compra):", i.price||"");
+    const price = prompt("Precio total — o 6x18 para cantidad × unitario (vacío si aún no se compra):",
+                         priceInputValue(i.price, i.qty, i.unit));
     if(price===null) return;
-    i.price = price.trim();
+    const p = parsePrice(price);
+    i.price = p.price; i.qty = p.qty; i.unit = p.unit;
     if(i.price!=="") i.done = true;
   }
   i.name = name.trim() || i.name;
@@ -517,8 +593,9 @@ function deleteClient(){
    ========================================================================= */
 function duplicateList(){
   const c = activeClient();
-  const copy = { id:uid(), name:c.name, base:false, date:today(), quoteNum:1,
-    items: c.items.map(i=>({ id:uid(), name:i.name, detail:i.detail, price:"", done:false, quotePrice:"" })) };
+  const copy = { id:uid(), name:c.name, base:false, date:today(), quoteNum:1, remoteId:null,
+    items: c.items.map(i=>({ id:uid(), name:i.name, detail:i.detail, price:"", qty:"", unit:"",
+                             done:false, quotePrice:"", qqty:"", qunit:"" })) };
   state.clients.push(copy);
   state.activeId = copy.id;
   render(); closeSheet(); toast("Lista duplicada como pendiente ✅");
@@ -526,7 +603,7 @@ function duplicateList(){
 function clearPrices(){
   const c = activeClient(); closeSheet();
   if(confirm("¿Volver todos los productos a pendiente y borrar precios de compra?")){
-    c.items.forEach(i=>{ i.price=""; i.done=false; });
+    c.items.forEach(i=>{ i.price=""; i.qty=""; i.unit=""; i.done=false; });
     c.date = today(); render();
   }
 }
@@ -578,7 +655,9 @@ function importPasted(){
     const p = s.match(/\(([^)]*)\)\s*$/);
     if(p){ detail = p[1].trim(); s = s.slice(0,p.index).trim(); }
     if(!s) return;
-    activeClient().items.push({ id:uid(), name:s, detail, price, done: price!=="", quotePrice:"" });
+    const pp = parsePrice(price);
+    activeClient().items.push({ id:uid(), name:s, detail, price:pp.price, qty:pp.qty, unit:pp.unit,
+      done: pp.price!=="", quotePrice:"", qqty:"", qunit:"" });
     added++;
   });
   closePasteModal(); render();
@@ -595,7 +674,12 @@ function buildWhatsAppText(){
   const total = done.reduce((s,i)=> s + (parseFloat(i.price)||0), 0);
   let t = `🛒 *${c.name.toUpperCase()}*\n📅 ${c.date}\n`;
   t += `\n*COMPRADO* ✅\n`;
-  if(done.length){ done.forEach(i=>{ const d=i.detail?` _(${i.detail})_`:""; const p=(i.price!==""&&i.price!=null)?` = ${fmt(i.price)}`:""; t+=`• ${i.name}${d}${p}\n`; }); }
+  if(done.length){ done.forEach(i=>{
+    const u=unitLabel(i.qty,i.unit);
+    const d=[i.detail, u].filter(Boolean).join(" · ");
+    const dTxt=d?` _(${d})_`:"";
+    const p=(i.price!==""&&i.price!=null)?` = ${fmt(i.price)}`:"";
+    t+=`• ${i.name}${dTxt}${p}\n`; }); }
   else { t += `—\n`; }
   t += `\n*PENDIENTE* ⏳\n`;
   if(pend.length){ pend.forEach(i=>{ const d=i.detail?` _(${i.detail})_`:""; t+=`• ${i.name}${d}\n`; }); }
@@ -610,7 +694,11 @@ function buildQuoteText(){
   const items = c.items.filter(i=>!i.done && i.quotePrice!=="" && i.quotePrice!=null);
   const total = items.reduce((s,i)=> s + (parseFloat(i.quotePrice)||0), 0);
   let t = `💱 *COTIZACIÓN #${c.quoteNum} · ${c.name.toUpperCase()}*\n📅 ${today()}\n\n`;
-  if(items.length){ items.forEach(i=>{ const d=i.detail?` _(${i.detail})_`:""; t+=`• ${i.name}${d} = ${fmt(i.quotePrice)}\n`; }); }
+  if(items.length){ items.forEach(i=>{
+    const u=unitLabel(i.qqty,i.qunit);
+    const d=[i.detail, u].filter(Boolean).join(" · ");
+    const dTxt=d?` _(${d})_`:"";
+    t+=`• ${i.name}${dTxt} = ${fmt(i.quotePrice)}\n`; }); }
   else { t += `— (sin precios cargados)\n`; }
   t += `\n━━━━━━━━━━━━━\n*TOTAL COTIZADO: ${fmt(total)} Bs*`;
   return t;
@@ -635,7 +723,7 @@ function clearQuotes(){
   const c = activeClient();
   if(!c.items.some(i=>i.quotePrice)){ toast("No hay precios de cotización"); return; }
   if(confirm(`¿Cerrar la Cotización #${c.quoteNum} y empezar la #${c.quoteNum+1}? (no afecta tu lista de compra)`)){
-    c.items.forEach(i=>i.quotePrice="");
+    c.items.forEach(i=>{ i.quotePrice=""; i.qqty=""; i.qunit=""; });
     c.quoteNum = (c.quoteNum||1) + 1;
     render(); toast(`Cotización limpiada · ahora es la #${c.quoteNum} ✅`);
   }
@@ -668,13 +756,230 @@ function importData(ev){
 }
 
 /* =========================================================================
+   NUBE (opcional) — conectar esta app con el ERP
+
+   Principio: el modo local NO cambia. Sin conectarse, todo funciona igual que
+   siempre. Conectarse SUMA: respaldar las listas en el negocio, bajarlas en
+   otro teléfono y convertir una cotización en documento con número.
+
+   Se guarda solo la URL, el email y el `refresh` (el `access` vive en memoria,
+   como en el panel). Cada lista subida recuerda su `remoteId` para actualizarla
+   en vez de duplicarla.
+   ========================================================================= */
+const CLOUD_KEY = "listasCloud_v1";
+let cloud = loadCloud();            // {url, email, refresh} o null
+let cloudAccess = null;             // token de acceso, solo en memoria
+
+function loadCloud(){
+  try{ return JSON.parse(localStorage.getItem(CLOUD_KEY)) || null; }catch(e){ return null; }
+}
+function saveCloud(){
+  if(cloud) localStorage.setItem(CLOUD_KEY, JSON.stringify(cloud));
+  else localStorage.removeItem(CLOUD_KEY);
+}
+function isConnected(){ return !!(cloud && cloud.refresh); }
+
+async function cloudRefresh(){
+  if(!isConnected()) return null;
+  const r = await fetch(`${cloud.url}/api/auth/token/refresh/`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ refresh: cloud.refresh })
+  });
+  if(!r.ok){ return null; }
+  const data = await r.json();
+  cloudAccess = data.access;
+  if(data.refresh){ cloud.refresh = data.refresh; saveCloud(); }
+  return cloudAccess;
+}
+
+/** fetch contra la API con el token puesto; renueva y reintenta una vez ante 401. */
+async function api(path, opciones={}){
+  if(!isConnected()) throw new Error("No estás conectado al negocio");
+  if(!cloudAccess && !await cloudRefresh()) throw new Error("Tu sesión venció, vuelve a conectarte");
+  const pedir = () => fetch(`${cloud.url}${path}`, {
+    ...opciones,
+    headers: { "Content-Type":"application/json", "Authorization":`Bearer ${cloudAccess}`, ...(opciones.headers||{}) }
+  });
+  let r = await pedir();
+  if(r.status===401 && await cloudRefresh()) r = await pedir();
+  if(!r.ok){
+    let detalle = `Error ${r.status}`;
+    try{ const e = await r.json(); detalle = Object.values(e).flat().join(" ") || detalle; }catch(_){}
+    const err = new Error(detalle);
+    err.status = r.status;   // quien llama decide qué hacer (ver pushList y el 404)
+    throw err;
+  }
+  return r.status===204 ? null : r.json();
+}
+
+async function cloudLogin(url, email, password){
+  url = url.trim().replace(/\/$/,"");
+  const r = await fetch(`${url}/api/auth/token/`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ email:email.trim(), password })
+  });
+  if(!r.ok) throw new Error(r.status===401 ? "Correo o contraseña incorrectos" : `No se pudo conectar (${r.status})`);
+  const data = await r.json();
+  cloudAccess = data.access;
+  cloud = { url, email:email.trim(), refresh:data.refresh };
+  saveCloud();
+}
+
+function cloudLogout(){
+  cloud = null; cloudAccess = null; saveCloud();
+  state.clients.forEach(c=>c.remoteId=null);
+  render(); closeSheet(); toast("Desconectado · tus listas siguen aquí");
+}
+
+/* ---- Traducción local → API ------------------------------------------- */
+function listaPayload(c){
+  return {
+    titulo: c.name,
+    items: c.items.map((i,idx)=>{
+      const linea = { descripcion: i.name, detalle: i.detail || "", comprado: !!i.done, orden: idx };
+      // Si el ítem se escribió como "6x18", viaja desglosado; si no, total directo.
+      if(i.qty && i.unit){ linea.cantidad = i.qty; linea.precio_unitario = i.unit; }
+      else { linea.total = i.price || "0"; }
+      return linea;
+    })
+  };
+}
+
+function itemDesdeApi(it){
+  return {
+    id: uid(), name: it.descripcion, detail: it.detalle || "",
+    price: it.total || "", qty: it.cantidad ? fmt(it.cantidad) : "",
+    unit: it.precio_unitario ? fmt(it.precio_unitario) : "",
+    done: !!it.comprado, quotePrice:"", qqty:"", qunit:""
+  };
+}
+
+/* ---- Acciones de sincronización --------------------------------------- */
+/** Sube la lista activa. Devuelve true si se guardó. */
+async function pushList(silencioso){
+  const c = activeClient();
+  if(!c.items.length){ toast("La lista está vacía"); return false; }
+  try{
+    toast("Subiendo…");
+    const cuerpo = JSON.stringify(listaPayload(c));
+    let res;
+    if(c.remoteId){
+      try{
+        res = await api(`/api/listas/${c.remoteId}/`, { method:"PATCH", body:cuerpo });
+      }catch(e){
+        // Solo si la borraron del ERP (404) se vuelve a crear. Ante cualquier
+        // otro error se avisa: reintentar con POST duplicaría la lista.
+        if(e.status !== 404) throw e;
+        res = await api("/api/listas/", { method:"POST", body:cuerpo });
+      }
+    } else {
+      res = await api("/api/listas/", { method:"POST", body:cuerpo });
+    }
+    c.remoteId = res.id;
+    render();
+    if(!silencioso) toast(`"${c.name}" guardada en el negocio ☁️`);
+    closeSheet();
+    return true;
+  }catch(e){ toast(e.message); closeSheet(); return false; }
+}
+
+async function pushAll(){
+  closeSheet();
+  const previo = state.activeId;
+  let subidas = 0, fallidas = 0;
+  for(const c of state.clients){
+    if(!c.items.length) continue;
+    state.activeId = c.id;
+    if(await pushList(true)) subidas++; else fallidas++;
+  }
+  state.activeId = previo;
+  render();
+  toast(fallidas ? `${subidas} subidas · ${fallidas} con error` : `${subidas} listas subidas ☁️`);
+}
+
+async function pullLists(){
+  closeSheet();
+  if(!confirm("Se traerán las listas del negocio. Las que ya subiste se actualizan con lo que hay en la nube. ¿Continuar?")) return;
+  try{
+    toast("Bajando…");
+    const data = await api("/api/listas/");
+    let nuevas = 0, actualizadas = 0;
+    (data.results||[]).forEach(r=>{
+      let c = state.clients.find(x=>x.remoteId===r.id);
+      if(!c){
+        c = { id:uid(), name:r.titulo, base:false, date:today(), items:[], quoteNum:1, remoteId:r.id };
+        state.clients.push(c); nuevas++;
+      } else { c.name = r.titulo; actualizadas++; }
+      c.items = (r.items||[]).map(itemDesdeApi);
+    });
+    render();
+    toast(`${nuevas} nuevas · ${actualizadas} actualizadas ☁️`);
+  }catch(e){ toast(e.message); }
+}
+
+/** Convierte la cotización actual en una Cotizacion real del ERP (con número). */
+async function pushQuote(){
+  closeSheet();
+  const c = activeClient();
+  const items = c.items.filter(i=>!i.done && i.quotePrice!=="" && i.quotePrice!=null);
+  if(!items.length){ toast("Primero pon precios de cotización"); return; }
+  try{
+    toast("Enviando cotización…");
+    const res = await api("/api/cotizaciones/", { method:"POST", body: JSON.stringify({
+      cliente_nombre: c.name,
+      detalles: items.map((i,idx)=>{
+        const linea = { descripcion: i.name, detalle: i.detail || "", impuesto: "0", orden: idx };
+        if(i.qqty && i.qunit){ linea.cantidad = i.qqty; linea.precio_unitario = i.qunit; }
+        else { linea.total = i.quotePrice; }
+        return linea;
+      })
+    })});
+    toast(`Cotización ${res.numero} creada en el negocio ✅`);
+  }catch(e){ toast(e.message); }
+}
+
+/* ---- Modal de conexión ------------------------------------------------- */
+function openCloudModal(){
+  closeSheet();
+  document.getElementById("cloudUrl").value = (cloud && cloud.url) || "http://127.0.0.1:8000";
+  document.getElementById("cloudEmail").value = (cloud && cloud.email) || "";
+  document.getElementById("cloudPass").value = "";
+  document.getElementById("cloudErr").textContent = "";
+  document.getElementById("cloudBg").classList.add("show");
+  }
+function closeCloudModal(){ document.getElementById("cloudBg").classList.remove("show"); }
+
+async function doCloudLogin(){
+  const url = document.getElementById("cloudUrl").value;
+  const email = document.getElementById("cloudEmail").value;
+  const pass = document.getElementById("cloudPass").value;
+  const err = document.getElementById("cloudErr");
+  err.textContent = "Conectando…";
+  try{
+    await cloudLogin(url, email, pass);
+    closeCloudModal(); render();
+    toast("Conectado ☁️ Ya puedes subir tus listas");
+  }catch(e){ err.textContent = e.message; }
+}
+
+/* =========================================================================
    MENÚ (hoja inferior) — se arma dinámico
    ========================================================================= */
 function openSheet(){
   const c = activeClient();
   const sheet = document.getElementById("sheet");
+  const nube = isConnected() ? `
+    <button class="opt" onclick="pushList()"><span class="ico">☁️</span><span>Subir "${escapeHtml(c.name)}" al negocio<small>${c.remoteId ? "Ya subida: se actualiza" : "Se crea como lista nueva"}</small></span></button>
+    <button class="opt" onclick="pushAll()"><span class="ico">⬆️</span><span>Subir TODAS mis listas<small>Respaldo completo en el negocio</small></span></button>
+    <button class="opt" onclick="pullLists()"><span class="ico">⬇️</span><span>Bajar listas del negocio<small>Para verlas en este teléfono</small></span></button>
+    ${ isQuote() ? `<button class="opt" onclick="pushQuote()"><span class="ico">💱</span><span>Enviar esta cotización al negocio<small>Se crea con número (COT-0001)</small></span></button>` : "" }
+    <button class="opt" onclick="cloudLogout()"><span class="ico">🔌</span><span>Desconectar<small>${escapeHtml(cloud.email)} · tus listas se quedan aquí</small></span></button>
+  ` : `
+    <button class="opt" onclick="openCloudModal()"><span class="ico">☁️</span><span>Conectar con mi negocio<small>Opcional: respalda y sincroniza tus listas</small></span></button>
+  `;
   sheet.innerHTML = `
     <h3>Opciones — ${escapeHtml(c.name)}</h3>
+    ${nube}
     <button class="opt" onclick="duplicateList()"><span class="ico">📑</span><span>Duplicar esta lista en una nueva fecha<small>Copia los productos como pendientes</small></span></button>
     <button class="opt" onclick="renameClient()"><span class="ico">✏️</span><span>Renombrar cliente actual</span></button>
     <button class="opt" onclick="clearPrices()"><span class="ico">🧹</span><span>Limpiar precios y volver todo a pendiente<small>Reusar la misma lista para la próxima compra</small></span></button>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>ERP · Panel</title>
+    <script>
+      // Se aplica el tema ANTES de pintar para que no haya destello blanco al
+      // entrar en modo oscuro. La preferencia guardada gana sobre la del sistema.
+      (function () {
+        var guardado = localStorage.getItem("erp-tema");
+        var oscuroSistema = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.dataset.tema =
+          guardado || (oscuroSistema ? "oscuro" : "claro");
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

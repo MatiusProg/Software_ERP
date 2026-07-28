@@ -1,0 +1,277 @@
+/*
+  Hoja de estilos única del panel.
+
+  Un solo sistema de variables con dos pieles: `data-tema="claro"` (por defecto)
+  y `data-tema="oscuro"`. El interruptor de la barra superior solo cambia ese
+  atributo en <html> y lo guarda en localStorage — ningún componente conoce el
+  tema, todos leen variables.
+*/
+
+:root {
+  --fondo: #f6f7f9;
+  --superficie: #ffffff;
+  --superficie-2: #f1f3f5;
+  --borde: #e2e6ea;
+  --texto: #14181d;
+  --tenue: #6b7684;
+  --acento: #0f766e;
+  --acento-suave: #d7f2ee;
+  --acento-txt: #ffffff;
+  --exito: #15803d;
+  --exito-suave: #dcfce7;
+  --peligro: #b91c1c;
+  --peligro-suave: #fee2e2;
+  --aviso-suave: #fef3c7;
+  --aviso: #92400e;
+  --sombra: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --radio: 10px;
+  --radio-sm: 7px;
+}
+
+[data-tema="oscuro"] {
+  --fondo: #0d1117;
+  --superficie: #161b22;
+  --superficie-2: #1f2630;
+  --borde: #2b333d;
+  --texto: #e6edf3;
+  --tenue: #8d97a3;
+  --acento: #2dd4bf;
+  --acento-suave: #10312e;
+  --acento-txt: #04211e;
+  --exito: #4ade80;
+  --exito-suave: #10291a;
+  --peligro: #f87171;
+  --peligro-suave: #2c1516;
+  --aviso-suave: #2e2410;
+  --aviso: #fbbf24;
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--acento); }
+
+/* --------------------------------------------------------------- Estructura */
+.app { display: flex; flex-direction: column; min-height: 100%; }
+
+.barra {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 16px; height: 56px;
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borde);
+}
+.barra .marca {
+  font-weight: 700; letter-spacing: -0.02em; margin-right: 14px;
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.barra .marca .punto {
+  width: 10px; height: 10px; border-radius: 3px; background: var(--acento);
+}
+.barra nav { display: flex; gap: 2px; overflow-x: auto; flex: 1; }
+.barra nav a {
+  padding: 7px 12px; border-radius: var(--radio-sm); text-decoration: none;
+  color: var(--tenue); font-weight: 500; white-space: nowrap; font-size: 14px;
+}
+.barra nav a:hover { background: var(--superficie-2); color: var(--texto); }
+.barra nav a.activo { background: var(--acento-suave); color: var(--acento); }
+.barra .derecha { display: flex; align-items: center; gap: 8px; }
+
+.contenido { flex: 1; padding: 22px 16px 60px; max-width: 1180px; width: 100%; margin: 0 auto; }
+.contenido.ancho { max-width: 1500px; }
+
+.encabezado {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.encabezado h1 { font-size: 22px; margin: 0; letter-spacing: -0.02em; }
+.encabezado p { margin: 2px 0 0; color: var(--tenue); font-size: 13px; }
+
+/* ---------------------------------------------------------------- Elementos */
+.tarjeta {
+  background: var(--superficie); border: 1px solid var(--borde);
+  border-radius: var(--radio); box-shadow: var(--sombra);
+}
+.tarjeta.pad { padding: 18px; }
+
+.grilla { display: grid; gap: 16px; }
+.fila { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.fila.fin { justify-content: flex-end; }
+.crece { flex: 1; min-width: 0; }
+
+label.campo { display: block; margin-bottom: 12px; }
+label.campo > span {
+  display: block; font-size: 12px; font-weight: 600; color: var(--tenue);
+  margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+input, select, textarea, .entrada {
+  width: 100%; padding: 9px 11px; font: inherit; font-size: 14px;
+  color: var(--texto); background: var(--superficie);
+  border: 1px solid var(--borde); border-radius: var(--radio-sm);
+  outline: none; transition: border-color .12s, box-shadow .12s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--acento);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 18%, transparent);
+}
+input[type="checkbox"] { width: auto; accent-color: var(--acento); }
+textarea { resize: vertical; min-height: 66px; }
+
+button, .boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 9px 15px; font: inherit; font-size: 14px; font-weight: 600;
+  border: 1px solid var(--borde); border-radius: var(--radio-sm);
+  background: var(--superficie); color: var(--texto);
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: filter .12s, transform .06s, background .12s;
+}
+button:hover:not(:disabled), .boton:hover { background: var(--superficie-2); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+button.primario, .boton.primario {
+  background: var(--acento); color: var(--acento-txt); border-color: transparent;
+}
+button.primario:hover:not(:disabled), .boton.primario:hover { filter: brightness(1.08); background: var(--acento); }
+button.peligro { color: var(--peligro); border-color: color-mix(in srgb, var(--peligro) 35%, var(--borde)); }
+button.peligro:hover:not(:disabled) { background: var(--peligro-suave); }
+button.plano { border-color: transparent; background: transparent; }
+button.plano:hover:not(:disabled) { background: var(--superficie-2); }
+button.grande { padding: 14px 20px; font-size: 16px; width: 100%; }
+button.icono { padding: 7px 9px; }
+
+/* ------------------------------------------------------------------- Tablas */
+.tabla-caja { overflow-x: auto; border-radius: var(--radio); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--tenue); font-weight: 700; padding: 10px 12px;
+  border-bottom: 1px solid var(--borde); background: var(--superficie-2);
+  white-space: nowrap; position: sticky; top: 0;
+}
+td { padding: 10px 12px; border-bottom: 1px solid var(--borde); }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--superficie-2); }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.clic { cursor: pointer; }
+
+/* -------------------------------------------------------------------- Chips */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: var(--superficie-2); color: var(--tenue);
+}
+.chip.ok { background: var(--exito-suave); color: var(--exito); }
+.chip.mal { background: var(--peligro-suave); color: var(--peligro); }
+.chip.espera { background: var(--aviso-suave); color: var(--aviso); }
+.chip.acento { background: var(--acento-suave); color: var(--acento); }
+
+/* ------------------------------------------------------------------ Estados */
+.vacio { padding: 46px 20px; text-align: center; color: var(--tenue); }
+.vacio h3 { margin: 0 0 6px; color: var(--texto); font-size: 16px; }
+.error {
+  background: var(--peligro-suave); color: var(--peligro);
+  padding: 10px 13px; border-radius: var(--radio-sm); font-size: 14px;
+  margin-bottom: 12px; white-space: pre-line;
+}
+.cargando { padding: 34px; text-align: center; color: var(--tenue); }
+
+/* -------------------------------------------------------------------- Modal */
+.velo {
+  position: fixed; inset: 0; z-index: 50; display: flex;
+  align-items: center; justify-content: center; padding: 16px;
+  background: rgba(8, 12, 18, .55); backdrop-filter: blur(2px);
+  animation: aparecer .12s ease-out;
+}
+.modal {
+  background: var(--superficie); border-radius: 14px; border: 1px solid var(--borde);
+  width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+  animation: subir .16s ease-out;
+}
+.modal .cabecera {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid var(--borde);
+}
+.modal .cabecera h2 { margin: 0; font-size: 17px; }
+.modal .cuerpo { padding: 18px; }
+.modal .pie {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 14px 18px; border-top: 1px solid var(--borde);
+}
+@keyframes aparecer { from { opacity: 0 } to { opacity: 1 } }
+@keyframes subir { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+
+/* ---------------------------------------------------------- Punto de venta */
+.pos { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .pos { grid-template-columns: 1fr; } }
+
+.pos .resumen { position: sticky; top: 76px; }
+.pos .total-grande {
+  font-size: 34px; font-weight: 800; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.sugerencias {
+  border: 1px solid var(--borde); border-radius: var(--radio-sm);
+  background: var(--superficie); max-height: 260px; overflow-y: auto;
+  box-shadow: var(--sombra); margin-top: 4px;
+}
+.sugerencias button {
+  width: 100%; justify-content: space-between; border: 0; border-radius: 0;
+  border-bottom: 1px solid var(--borde); background: transparent; font-weight: 500;
+  text-align: left; padding: 10px 12px;
+}
+.sugerencias button:last-child { border-bottom: 0; }
+.buscador { position: relative; }
+
+.linea-pos {
+  display: grid; grid-template-columns: 1fr 92px 110px 110px 34px;
+  gap: 8px; align-items: center; padding: 8px 0;
+  border-bottom: 1px dashed var(--borde);
+}
+.linea-pos .desc-input { font-weight: 600; }
+@media (max-width: 700px) {
+  .linea-pos { grid-template-columns: 1fr 1fr; }
+  .linea-pos .desc-input { grid-column: 1 / -1; }
+}
+
+/* ------------------------------------------------------------ QR de la nota */
+.qr-caja { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.qr-caja img {
+  width: 168px; height: 168px; border-radius: var(--radio-sm);
+  background: #fff; padding: 8px; border: 1px solid var(--borde);
+}
+.acciones-nota { display: grid; gap: 8px; flex: 1; min-width: 210px; }
+
+.enlace-corto {
+  font-family: ui-monospace, monospace; font-size: 12px; color: var(--tenue);
+  word-break: break-all;
+}
+
+/* -------------------------------------------------------------------- Login */
+.pantalla-login {
+  min-height: 100%; display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.pantalla-login .tarjeta { width: 100%; max-width: 400px; padding: 26px; }
+.pantalla-login h1 { margin: 0 0 4px; font-size: 22px; }
+.pantalla-login .sub { color: var(--tenue); font-size: 14px; margin: 0 0 20px; }
+
+/* ---------------------------------------------------------------- Tablero */
+.metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.metrica { padding: 16px 18px; }
+.metrica .rotulo { font-size: 12px; color: var(--tenue); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+.metrica .valor { font-size: 27px; font-weight: 800; letter-spacing: -0.03em; margin-top: 4px; font-variant-numeric: tabular-nums; }

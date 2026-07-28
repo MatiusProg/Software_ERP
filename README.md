@@ -4,18 +4,19 @@ Plataforma **ERP SaaS multi-tenant** para pequeños negocios: catálogo, ventas,
 cotizaciones, compras e inventario. Nace de una PWA de listas de compras y
 cotizaciones, que se convierte en el cliente ligero móvil del sistema.
 
-> Estado: **Fase 2 completada** — sobre los cimientos multi-tenant (Fase 0) y la
-> seguridad + auditoría (Fase 1) se sumaron el catálogo (categorías, productos con
-> precios e historial) y los terceros (cliente/proveedor/transportadora). API
-> cubierta por **17 pruebas automatizadas** (todas en verde).
-> **Siguiente: Fase 3 (Ventas, Cotizaciones y Listas + conectar la PWA).**
+> Estado: **Fase 3 en curso** — sobre los cimientos multi-tenant (Fase 0), la
+> seguridad + auditoría (Fase 1) y el catálogo/terceros (Fase 2), ya están las
+> ventas, cotizaciones y listas, el escaparate público, la **nota de venta por QR**
+> y el **panel React**. API cubierta por **46 pruebas automatizadas** (en verde).
 > Ver el [roadmap](#roadmap).
 
 ## Arquitectura
 
 - **Backend:** Django + Django REST Framework + PostgreSQL. API REST con JWT.
   Multi-tenant: cada negocio (organización) tiene sus datos aislados.
-- **Frontend:** PWA de listas/cotizaciones (actual) + panel ERP (próximamente).
+- **Panel ERP:** React + TypeScript (Vite) en `frontend/` — punto de venta,
+  catálogo, cotizaciones, listas y clientes, con tema claro/oscuro.
+- **PWA de listas:** cliente ligero en la raíz, en dos modos (local y conectado).
 - **Despliegue previsto:** Railway (backend + Postgres) en producción.
 
 ## Estructura del repositorio
@@ -23,18 +24,35 @@ cotizaciones, que se convierte en el cliente ligero móvil del sistema.
 ```
 Sistema_ERP/
 ├─ backend/            # API Django (ver backend/README.md para levantarlo)
+├─ frontend/           # panel ERP en React + TypeScript (Vite)
 ├─ index.html + PWA/   # PWA de listas de compras (cliente ligero, en la raíz)
-└─ docs/               # documentación (futuro)
+└─ docs/               # PLAN.md (documento vivo) y notas de fase
 ```
 
-> La PWA vive por ahora en la raíz porque se publica con GitHub Pages. Cuando se
-> construya el frontend del ERP, se moverá a `frontend/` y se reconfigurará Pages.
+> La PWA vive en la raíz porque se publica con GitHub Pages.
 
 ## Empezar
 
-El backend se levanta siguiendo **[`backend/README.md`](backend/README.md)**
-(guía para Git Bash: activar venv, correr el servidor, probar la API, entrar a
-la base de datos).
+**Backend** — guía completa en **[`backend/README.md`](backend/README.md)**:
+
+```bash
+source backend/.venv/Scripts/activate
+cd backend
+python manage.py migrate
+python manage.py datos_demo      # catálogo, clientes y ventas de prueba
+python manage.py runserver       # http://127.0.0.1:8000
+```
+
+**Panel ERP** (en otra terminal):
+
+```bash
+cd frontend
+npm install
+npm run dev                      # http://localhost:5173
+```
+
+Entrar con los usuarios que imprime `datos_demo`
+(`demo@erp.test` / `clave12345`, propietario).
 
 ## Roadmap
 
@@ -42,7 +60,9 @@ la base de datos).
 - **Fase 1 — Seguridad + Auditoría** ✅ Roles/permisos en la API; bitácora + detalle.
 - **Fase 2 — Catálogo y Terceros** ✅ Categorías, Productos (con precios e historial),
   Terceros (cliente/proveedor/transportadora) con contactos y ubicación. (17 pruebas)
-- **Fase 3 — Ventas, Cotizaciones y Listas** ⏳ + conectar la PWA a la API.
+- **Fase 3 — Ventas, Cotizaciones y Listas** ⏳ backend + **nota de venta por QR**
+  (el cliente escanea y guarda su nota en la galería o la manda por WhatsApp) +
+  **panel React**. Falta conectar la PWA y desplegar.
 - **Fase 4 — Compras e Inventario** Compras, almacenes y movimientos de stock.
 - **Fase 5 — Reportes y Exportables** (PDF A4 y ticket térmico 80mm).
 - **Fase 6 — Pagos QR (Bolivia)** — QR Simple del BCB (en investigación).

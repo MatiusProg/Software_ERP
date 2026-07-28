@@ -30,6 +30,19 @@ SECRET_KEY = os.getenv(
 DEBUG = env_bool("DJANGO_DEBUG", True)
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
+# Railway publica el dominio de la app en esta variable; se añade sola para no
+# tener que copiarla a mano en cada despliegue.
+_dominio_railway = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
+if _dominio_railway and _dominio_railway not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_dominio_railway)
+
+# Django 4+ exige el esquema en los orígenes de confianza para POST/CSRF.
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
+if _dominio_railway:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{_dominio_railway}")
+
 
 # ----------------------------------------------------------------------------
 # Apps
@@ -58,6 +71,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Sirve los estáticos del admin en producción sin necesitar nginx.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -90,18 +105,35 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # ----------------------------------------------------------------------------
-# Base de datos — PostgreSQL local en desarrollo (ver .env)
+# Base de datos
+#
+# En desarrollo: PostgreSQL local con los DB_* del .env.
+# En producción (Supabase / Railway): basta con DATABASE_URL, que es lo que
+# ambos servicios entregan. Si está definida, gana sobre los DB_*.
 # ----------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "erp_dev"),
-        "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+import dj_database_url  # noqa: E402
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,           # reutiliza conexiones entre peticiones
+            ssl_require=env_bool("DB_SSL_REQUIRE", True),
+        )
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "erp_dev"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
+    }
 
 
 # ----------------------------------------------------------------------------
@@ -170,5 +202,30 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"          # destino de collectstatic
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# ----------------------------------------------------------------------------
+# Endurecimiento para producción
+#
+# Solo se activa con DJANGO_DEBUG=False, para no estorbar en desarrollo (donde
+# no hay HTTPS y redirigir rompería el servidor local).
+# ----------------------------------------------------------------------------
+if not DEBUG:
+    # Railway/Supabase terminan el TLS antes de Django: sin esto, Django cree
+    # que la petición es HTTP y entra en un bucle de redirecciones.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"

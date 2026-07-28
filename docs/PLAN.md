@@ -63,15 +63,17 @@ Doble público:
 | 0 | Cimientos multi-tenant | Organizacion, Usuario, Membresia, JWT, base tenant | ✅ |
 | 1 | Seguridad + Auditoría | Refactor a español; roles/permisos en la API; bitácora + detalle | ✅ |
 | 2 | Catálogo y Terceros | Categoría, Producto (con precios mín/máx), Historial de precios, Tercero (cliente/proveedor/transportadora) con ubicación y contactos | ✅ (17 pruebas) |
-| 3 | Ventas, Cotizaciones y Listas | Cotización, Venta (nota de venta), Lista de pendientes; **conectar la PWA** | ⏳ siguiente |
+| 3 | Ventas, Cotizaciones y Listas | Cotización, Venta (nota de venta) **con QR público**, Lista de pendientes; **panel React**; **PWA conectada** | ⏳ falta desplegar |
 | 4 | Compras e Inventario | Compra (nota de compra), Almacén, Movimientos de stock | pendiente |
 | 5 | Reportes y Exportables | Reportes de ventas; exportar PDF (listas, notas A4 y ticket 80mm) | pendiente |
 | 6 | Pagos QR (Bolivia) | Integración QR (QR Simple BCB vía banco/agregador) — requiere investigación y acuerdo comercial | investigación |
 | 7 | Monetización + Facturación | Planes/suscripción de tenants; facturación electrónica (SIN) si el cliente lo pide | futuro |
 
-> **Fase 3 en curso:** el **backend está terminado y probado** (apps `ventas` y
-> `tienda`, 40 pruebas). Falta el frontend (panel React + conectar la PWA). El plan
-> detallado para continuar está en **[`FASE3-PENDIENTE.md`](FASE3-PENDIENTE.md)**.
+> **Fase 3 en curso:** backend (apps `ventas` y `tienda`), **nota de venta por QR**,
+> **panel React** (`frontend/`) y **PWA conectada** ya están hechos y probados
+> (**46 pruebas** en verde). Falta solo **desplegar**: ver
+> **[`DESPLIEGUE.md`](DESPLIEGUE.md)**. El detalle de cómo se construyó está en
+> **[`FASE3-PENDIENTE.md`](FASE3-PENDIENTE.md)**.
 
 ## 5. Modelo de datos (bosquejo, en español)
 

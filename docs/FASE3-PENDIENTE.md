@@ -1,8 +1,20 @@
-# Fase 3 — Traspaso para continuar (bloques 2 y 3 del frontend)
+# Fase 3 — Estado y referencia
 
-> Documento de continuación. Escrito al cerrar la sesión del **2026-07-17**.
-> El **backend de Fase 3 está terminado, probado y commiteado** (`de79be7` en `main`,
-> **sin push todavía**). Falta solo el frontend: el **panel React** y **conectar la PWA**.
+> **Actualizado el 2026-07-27.** Los tres bloques están hechos: backend, **panel
+> React** (`frontend/`) y **PWA conectada**. Se sumó además la **nota de venta por
+> QR**. Lo único pendiente para cerrar la fase es **desplegar** —
+> ver **[`DESPLIEGUE.md`](DESPLIEGUE.md)**.
+>
+> | Bloque | Estado |
+> |---|---|
+> | 1 · Backend (ventas, cotizaciones, listas, tienda) | ✅ 46 pruebas |
+> | 1b · Nota de venta por QR (§7) | ✅ |
+> | 2 · Panel ERP en React (§3) | ✅ `frontend/` |
+> | 3 · PWA conectada (§4) | ✅ |
+> | 4 · Supabase + Railway (§5) | ⏳ pendiente |
+>
+> Lo que sigue del documento se conserva como **referencia de la API y de las
+> decisiones** (sirve para las fases 4 en adelante).
 
 ---
 
@@ -163,13 +175,39 @@ Checklist para cuando el frontend ya esté probado (decisión: se hace al cerrar
 
 ---
 
-## 6. Recordatorio: levantar y probar (Git Bash)
+## 7. Nota de venta por QR (añadido el 2026-07-27)
+
+Cada `Venta` nace con `token_publico` (UUID4). Con él se arma el QR que el cliente
+escanea para abrir **su** nota, sin login.
+
+| Ruta | Qué es |
+|---|---|
+| `GET /nota/<token>/` | la página del cliente (guardar imagen · WhatsApp · imprimir) |
+| `GET /nota/<token>/qr.svg` | solo el QR, en SVG |
+| `GET /api/nota/<token>/` | la nota en JSON |
+
+`GET /api/ventas/` devuelve además `token_publico`, `url_publica` y `url_qr`.
+
+Cómo está resuelto (ver `backend/apps/ventas/publico.py`):
+- El aislamiento lo da el **token**, no el tenant activo (igual que el `slug` en
+  `tienda`): se consulta con el manager `todos` y sin JWT.
+- El QR se genera en el servidor como **matriz de módulos** y se pinta en SVG (para
+  el panel) y en canvas (para la imagen que descarga el cliente). Sin CDN, sin
+  librería JS. Esa misma matriz servirá para el ticket térmico de la Fase 5.
+- La imagen que se comparte **lleva el QR dentro**: si la reenvían por WhatsApp,
+  quien la recibe puede volver a la nota en línea.
+
+## 8. Recordatorio: levantar y probar (Git Bash)
 
 ```bash
 source backend/.venv/Scripts/activate
 cd backend
+python manage.py datos_demo          # datos de prueba (idempotente)
 python manage.py runserver           # API en http://127.0.0.1:8000
-python manage.py test apps.catalogo apps.terceros apps.ventas apps.tienda   # 40 pruebas
+python manage.py test apps.catalogo apps.terceros apps.ventas apps.tienda   # 46 pruebas
+
+# En otra terminal, el panel:
+cd frontend && npm run dev           # http://localhost:5173
 ```
 Superusuario admin: `admin@erp.local` / `291022`. Detalle completo en `backend/README.md`.
 ```

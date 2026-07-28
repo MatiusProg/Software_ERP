@@ -182,6 +182,32 @@ curl http://127.0.0.1:8000/api/tienda/negocio-prueba/categorias/
 > negocio). Registrarse suma funciones (sincronizar listas, pedir); mirar no exige
 > cuenta.
 
+### Nota de venta por QR (Fase 3) — sin login
+
+Cada venta nace con un `token_publico` (UUID4 aleatorio). Con él se arma un **QR**
+que el cliente escanea con la cámara y abre **su** nota: puede **guardarla como
+imagen en la galería**, **mandarla por WhatsApp** o **imprimirla / guardarla en PDF**.
+El link no usa el id de la venta, así que no se puede adivinar ni recorrer.
+
+| Ruta | Qué devuelve |
+|---|---|
+| `GET /nota/<token>/` | la página para el cliente (HTML autocontenido, sin CDN) |
+| `GET /nota/<token>/qr.svg` | solo el QR, en SVG (para el panel y la impresión) |
+| `GET /api/nota/<token>/` | la misma nota en JSON (para la PWA o integraciones) |
+
+La respuesta de `/api/ventas/` trae `token_publico`, `url_publica` y `url_qr` listos
+para mostrar el QR en el panel. La nota pública **solo** expone lo que ya está en el
+papel del cliente (negocio, número, fecha, líneas, totales): nunca costos, márgenes,
+stock ni otras ventas. Ver `apps/ventas/publico.py`.
+
+```bash
+# Se usa el token que devolvió POST /api/ventas/
+curl http://127.0.0.1:8000/api/nota/<token>/
+```
+
+Si en producción las notas se sirven desde otro dominio, se configura con la
+variable de entorno `NOTA_PUBLICA_BASE_URL`.
+
 ---
 
 ## 4. Entrar a la base de datos
@@ -212,7 +238,7 @@ python manage.py makemigrations         # generar migraciones tras cambiar model
 python manage.py migrate                # aplicar migraciones
 python manage.py test                   # correr todas las pruebas automatizadas
 python manage.py test apps.catalogo apps.terceros   # Fase 2 (17 pruebas)
-python manage.py test apps.ventas apps.tienda        # Fase 3 (23 pruebas)
+python manage.py test apps.ventas apps.tienda        # Fase 3 (29 pruebas)
 python manage.py shell                  # consola de Python con Django cargado
 ```
 

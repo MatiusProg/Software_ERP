@@ -23,6 +23,7 @@ Decisiones aplicadas (ver docs/PLAN.md y notas de Fase 3):
   el impuesto contenido se discrimina para el desglose. La tasa se congela por línea.
 """
 
+import uuid
 from decimal import Decimal
 
 from django.db import models, transaction
@@ -206,6 +207,12 @@ class Venta(ModeloTenant):
         PAGADO = "pagado", "Pagado"
 
     numero = models.CharField(max_length=20, blank=True)
+    # Identificador aleatorio para la nota pública (el QR que se le da al cliente).
+    # Es un UUID4 impredecible: quien tiene el link ve SU nota y nada más; no
+    # expone el id secuencial ni exige login. Ver apps/ventas/publico.py.
+    token_publico = models.UUIDField(
+        "token público", default=uuid.uuid4, editable=False, unique=True
+    )
     cliente = models.ForeignKey(
         "terceros.Tercero", on_delete=models.PROTECT, null=True, blank=True,
         related_name="ventas",

@@ -210,6 +210,9 @@ class VentaSerializer(_DocumentoConLineasMixin, serializers.ModelSerializer):
     detalles = VentaDetalleSerializer(many=True, required=False)
     estado_display = serializers.CharField(source="get_estado_display", read_only=True)
     estado_pago_display = serializers.CharField(source="get_estado_pago_display", read_only=True)
+    # Nota pública por QR: el panel muestra el QR y comparte el link con el cliente.
+    url_publica = serializers.SerializerMethodField()
+    url_qr = serializers.SerializerMethodField()
 
     class Meta:
         model = Venta
@@ -218,12 +221,66 @@ class VentaSerializer(_DocumentoConLineasMixin, serializers.ModelSerializer):
             "estado", "estado_display", "estado_pago", "estado_pago_display",
             "cotizacion_origen", "notas",
             "subtotal", "impuesto_total", "total",
+            "token_publico", "url_publica", "url_qr",
             "detalles", "creado_en", "actualizado_en",
         ]
         read_only_fields = [
             "numero", "subtotal", "impuesto_total", "total",
-            "creado_en", "actualizado_en",
+            "token_publico", "creado_en", "actualizado_en",
         ]
+
+    def get_url_publica(self, obj):
+        # Import local: publico.py importa este módulo (evita el ciclo).
+        from .publico import url_nota_publica
+
+        return url_nota_publica(obj, self.context.get("request"))
+
+    def get_url_qr(self, obj):
+        from django.urls import reverse
+
+        ruta = reverse("nota-publica-qr", kwargs={"token": obj.token_publico})
+        request = self.context.get("request")
+        return request.build_absolute_uri(ruta) if request else ruta
+
+
+class NotaPublicaDetalleSerializer(serializers.ModelSerializer):
+    """Línea tal como la ve el cliente: qué se llevó y cuánto pagó."""
+
+    class Meta:
+        model = VentaDetalle
+        fields = ["descripcion", "detalle", "cantidad", "precio_unitario", "total"]
+        read_only_fields = fields
+
+
+class NotaPublicaSerializer(serializers.ModelSerializer):
+    """La nota de venta como la ve el cliente al escanear el QR.
+
+    Es de **solo lectura y pública**: expone únicamente lo que ya está en el papel
+    que se le entrega (negocio, número, fecha, líneas y totales). Nada de costos,
+    márgenes, stock ni referencias internas."""
+
+    negocio = serializers.CharField(source="organizacion.nombre", read_only=True)
+    negocio_slug = serializers.CharField(source="organizacion.slug", read_only=True)
+    cliente_nombre = serializers.SerializerMethodField()
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+    estado_pago_display = serializers.CharField(source="get_estado_pago_display", read_only=True)
+    fecha = serializers.DateTimeField(source="creado_en", read_only=True)
+    detalles = NotaPublicaDetalleSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Venta
+        fields = [
+            "negocio", "negocio_slug", "numero", "fecha",
+            "cliente_nombre", "estado", "estado_display",
+            "estado_pago", "estado_pago_display", "notas",
+            "subtotal", "impuesto_total", "total", "detalles",
+        ]
+        read_only_fields = fields
+
+    def get_cliente_nombre(self, obj):
+        if obj.cliente_id:
+            return obj.cliente.nombre
+        return obj.cliente_nombre or "Consumidor final"
 
 
 class ListaSerializer(_DocumentoConLineasMixin, serializers.ModelSerializer):

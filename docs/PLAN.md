@@ -47,6 +47,14 @@ Doble público:
    sin login y sin costos/mínimos/stock. Es la base del doble modo: mirar no exige
    cuenta; registrarse suma funciones. El aislamiento aquí viene del `slug`, no del
    tenant activo (se usa el manager `todos` + filtro explícito por organización).
+9. **Nota de venta por QR**: cada `Venta` lleva un `token_publico` (UUID4) con el
+   que se genera un QR. El cliente lo escanea y abre `/nota/<token>/`: una página
+   pública, sin login, desde la que puede **guardar la nota como imagen en su
+   galería**, **enviarla por WhatsApp** o **imprimirla/PDF**. El link es
+   impredecible (no usa el id secuencial) y solo muestra lo que ya está en el papel
+   del cliente. La página es autocontenida (canvas + Web Share API, sin CDN) y el
+   QR se genera en el servidor como matriz de módulos, servible en SVG — el mismo
+   dato servirá para imprimirlo en el ticket térmico de la Fase 5.
 
 ## 4. Roadmap por fases
 

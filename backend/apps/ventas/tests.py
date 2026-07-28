@@ -95,6 +95,76 @@ class VentaAPITest(BaseTenantAPITest):
         self.assertEqual(r.status_code, 401)
 
 
+class NotaPublicaQRTest(BaseTenantAPITest):
+    """La nota pública por QR: la abre el cliente, sin login y sin filtrarse nada
+    de la organización más allá de su propia nota."""
+
+    def _venta(self):
+        self.auth("prop@a.test")
+        r = self.client.post("/api/ventas/", {
+            "cliente_nombre": "Doña Rosa",
+            "detalles": [
+                {"descripcion": "Coca 2L", "detalle": "1 java",
+                 "cantidad": "6", "precio_unitario": "18.00", "impuesto": "13.00"},
+            ],
+        }, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        return r.data
+
+    def _anonimo(self):
+        self.client.credentials()   # quita el Bearer: a partir de aquí es un cliente cualquiera
+
+    def test_venta_expone_token_y_links(self):
+        venta = self._venta()
+        self.assertTrue(venta["token_publico"])
+        self.assertIn(f"/nota/{venta['token_publico']}/", venta["url_publica"])
+        self.assertTrue(venta["url_qr"].endswith("/qr.svg"))
+
+    def test_pagina_publica_abre_sin_login(self):
+        venta = self._venta()
+        self._anonimo()
+        r = self.client.get(f"/nota/{venta['token_publico']}/")
+        self.assertEqual(r.status_code, 200)
+        cuerpo = r.content.decode()
+        self.assertIn("V-0001", cuerpo)
+        self.assertIn("Org A", cuerpo)
+        self.assertIn("Doña Rosa", cuerpo)
+        self.assertIn("108.00", cuerpo)          # 6 × 18
+        self.assertIn("Guardar imagen", cuerpo)  # las acciones para el cliente
+
+    def test_json_publico_solo_trae_lo_del_cliente(self):
+        venta = self._venta()
+        self._anonimo()
+        r = self.client.get(f"/api/nota/{venta['token_publico']}/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["numero"], "V-0001")
+        self.assertEqual(r.data["negocio"], "Org A")
+        self.assertEqual(r.data["total"], "108.00")
+        self.assertEqual(r.data["detalles"][0]["descripcion"], "Coca 2L")
+        # Nada interno: ni ids, ni el token, ni datos de costo.
+        for campo in ("id", "token_publico", "cliente", "organizacion", "cotizacion_origen"):
+            self.assertNotIn(campo, r.data)
+
+    def test_qr_svg_publico(self):
+        venta = self._venta()
+        self._anonimo()
+        r = self.client.get(f"/nota/{venta['token_publico']}/qr.svg")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["Content-Type"], "image/svg+xml")
+        self.assertIn(b"<svg", r.content)
+
+    def test_token_inexistente_es_404(self):
+        self._anonimo()
+        falso = "00000000-0000-4000-8000-000000000000"
+        self.assertEqual(self.client.get(f"/nota/{falso}/").status_code, 404)
+        self.assertEqual(self.client.get(f"/api/nota/{falso}/").status_code, 404)
+
+    def test_cada_venta_tiene_su_propio_token(self):
+        primera = self._venta()
+        segunda = self._venta()
+        self.assertNotEqual(primera["token_publico"], segunda["token_publico"])
+
+
 class CotizacionAPITest(BaseTenantAPITest):
     DATOS = {
         "cliente_nombre": "Cliente Uno",

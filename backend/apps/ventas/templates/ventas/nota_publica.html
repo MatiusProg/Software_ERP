@@ -1,0 +1,366 @@
+{% load static %}<!doctype html>
+{% comment %}
+Página que ve el cliente al escanear el QR de su nota de venta.
+
+Es 100% autocontenida (sin CDN, sin build): funciona en un celular con mala
+conexión y desde cualquier navegador. Tres acciones:
+
+1. "Guardar imagen": dibuja la nota en un <canvas>, la convierte en PNG y usa la
+   Web Share API con archivos → el sistema ofrece guardar en la galería o mandar
+   a WhatsApp/Telegram/etc. Si el navegador no la soporta, descarga el PNG.
+2. "WhatsApp": comparte el link de la nota (wa.me), que siempre está vivo.
+3. "Imprimir / PDF": window.print() con hoja de estilo de impresión.
+
+La imagen lleva el QR incrustado: si la foto se reenvía, quien la recibe puede
+volver a la nota en línea.
+{% endcomment %}
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nota {{ nota.numero }} — {{ nota.negocio }}</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0f172a">
+  <meta property="og:title" content="Nota de venta {{ nota.numero }}">
+  <meta property="og:description" content="{{ nota.negocio }} · Total Bs {{ nota.total }}">
+  <style>
+    :root{
+      --fondo:#0f172a; --tarjeta:#ffffff; --texto:#0f172a; --tenue:#64748b;
+      --linea:#e2e8f0; --acento:#0f766e; --acento-txt:#ffffff; --wsp:#25d366;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:16px 12px 40px;
+      background:var(--fondo);
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+      color:var(--texto); display:flex; flex-direction:column; align-items:center; gap:16px;
+    }
+    .ticket{
+      width:100%; max-width:420px; background:var(--tarjeta); border-radius:14px;
+      padding:24px 20px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .negocio{font-size:22px; font-weight:700; text-align:center; margin:0}
+    .tipo{
+      text-align:center; font-size:11px; letter-spacing:.18em; color:var(--tenue);
+      text-transform:uppercase; margin:6px 0 18px;
+    }
+    .meta{display:flex; justify-content:space-between; font-size:13px; color:var(--tenue); gap:12px}
+    .meta strong{color:var(--texto); font-weight:600}
+    .sep{border:0; border-top:1px dashed var(--linea); margin:16px 0}
+    .item{display:flex; justify-content:space-between; gap:12px; margin-bottom:12px}
+    .item .desc{font-size:15px; font-weight:600; line-height:1.3}
+    .item .sub{font-size:12px; color:var(--tenue); margin-top:2px}
+    .item .monto{font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap}
+    .totales{font-size:14px}
+    .totales div{display:flex; justify-content:space-between; margin-bottom:6px; color:var(--tenue)}
+    .totales .grande{
+      font-size:22px; font-weight:700; color:var(--texto); margin-top:10px;
+      padding-top:10px; border-top:2px solid var(--texto);
+    }
+    .estado{
+      display:inline-block; margin-top:12px; padding:4px 12px; border-radius:999px;
+      font-size:12px; font-weight:600; background:#f1f5f9; color:var(--tenue);
+    }
+    .estado.pagado{background:#dcfce7; color:#166534}
+    .estado.anulada{background:#fee2e2; color:#991b1b}
+    .qr{text-align:center; margin-top:20px}
+    .qr svg{width:120px; height:120px}
+    .qr p{font-size:11px; color:var(--tenue); margin:6px 0 0}
+    .pie{text-align:center; font-size:11px; color:var(--tenue); margin-top:14px}
+    .acciones{width:100%; max-width:420px; display:grid; gap:10px}
+    button, .boton{
+      appearance:none; border:0; border-radius:12px; padding:14px 16px; font-size:15px;
+      font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      gap:10px; text-decoration:none; font-family:inherit;
+    }
+    .principal{background:var(--acento); color:var(--acento-txt)}
+    .wsp{background:var(--wsp); color:#04310f}
+    .secundaria{background:rgba(255,255,255,.12); color:#e2e8f0}
+    button:active, .boton:active{transform:translateY(1px)}
+    .aviso{
+      max-width:420px; width:100%; font-size:12px; color:#94a3b8; text-align:center;
+      min-height:16px;
+    }
+    @media print{
+      body{background:#fff; padding:0}
+      .acciones,.aviso{display:none}
+      .ticket{box-shadow:none; max-width:none; border-radius:0}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- La nota en HTML: es lo que se imprime y lo que se lee con lector de pantalla. -->
+  <main class="ticket" id="ticket">
+    <h1 class="negocio">{{ nota.negocio }}</h1>
+    <p class="tipo">Nota de venta</p>
+
+    <div class="meta">
+      <span>N.º <strong>{{ nota.numero|default:"s/n" }}</strong></span>
+      <span>{{ venta.creado_en|date:"d/m/Y H:i" }}</span>
+    </div>
+    <div class="meta" style="margin-top:6px">
+      <span>Cliente</span><strong>{{ nota.cliente_nombre }}</strong>
+    </div>
+
+    <hr class="sep">
+
+    {% for d in nota.detalles %}
+      <div class="item">
+        <div>
+          <div class="desc">{{ d.descripcion }}</div>
+          {% if d.detalle or d.cantidad %}
+            <div class="sub">
+              {% if d.detalle %}{{ d.detalle }}{% endif %}
+              {% if d.detalle and d.cantidad %} · {% endif %}
+              {% if d.cantidad %}{{ d.cantidad|floatformat:"-3" }} × Bs {{ d.precio_unitario }}{% endif %}
+            </div>
+          {% endif %}
+        </div>
+        <div class="monto">Bs {{ d.total }}</div>
+      </div>
+    {% endfor %}
+
+    <hr class="sep">
+
+    <div class="totales">
+      <div><span>Subtotal</span><span>Bs {{ nota.subtotal }}</span></div>
+      <div><span>IVA incluido</span><span>Bs {{ nota.impuesto_total }}</span></div>
+      <div class="grande"><span>TOTAL</span><span>Bs {{ nota.total }}</span></div>
+    </div>
+
+    <span class="estado {% if nota.estado == 'anulada' %}anulada{% elif nota.estado_pago == 'pagado' %}pagado{% endif %}">
+      {% if nota.estado == 'anulada' %}ANULADA{% else %}{{ nota.estado_pago_display }}{% endif %}
+    </span>
+
+    {% if nota.notas %}<p class="pie" style="text-align:left">{{ nota.notas }}</p>{% endif %}
+
+    <div class="qr">
+      {# El mismo QR que escaneó el cliente: si comparte la imagen, el link viaja con ella. #}
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{ qr|length }} {{ qr|length }}" shape-rendering="crispEdges" role="img" aria-label="Código QR de la nota">
+        <rect width="100%" height="100%" fill="#fff"/>
+        {% for fila in qr %}{% for modulo in fila %}{% if modulo %}<rect x="{{ forloop.counter0 }}" y="{{ forloop.parentloop.counter0 }}" width="1" height="1"/>{% endif %}{% endfor %}{% endfor %}
+      </svg>
+      <p>Escanea para volver a esta nota</p>
+    </div>
+
+    <p class="pie">Documento generado por {{ nota.negocio }}</p>
+  </main>
+
+  <div class="acciones">
+    <button class="principal" id="btn-imagen">📥 Guardar imagen / Compartir</button>
+    <a class="boton wsp" id="btn-wsp" href="#" target="_blank" rel="noopener">💬 Enviar por WhatsApp</a>
+    <button class="secundaria" id="btn-imprimir">🖨️ Imprimir o guardar en PDF</button>
+    <button class="secundaria" id="btn-copiar">🔗 Copiar el link</button>
+  </div>
+  <p class="aviso" id="aviso"></p>
+
+  {{ nota|json_script:"datos-nota" }}
+  {{ qr|json_script:"datos-qr" }}
+  <script id="datos-extra" type="application/json">
+    {"url": "{{ url_publica|escapejs }}", "fecha": "{{ venta.creado_en|date:'d/m/Y H:i' }}"}
+  </script>
+
+  <script>
+  (function () {
+    "use strict";
+    const nota  = JSON.parse(document.getElementById("datos-nota").textContent);
+    const qr    = JSON.parse(document.getElementById("datos-qr").textContent);
+    const extra = JSON.parse(document.getElementById("datos-extra").textContent);
+    const aviso = document.getElementById("aviso");
+
+    const MONEDA = "Bs";                    // TODO: campo `moneda` en Organizacion
+    const decir = (t) => { aviso.textContent = t; };
+    const dinero = (v) => MONEDA + " " + Number(v).toFixed(2);
+    const cant = (v) => String(parseFloat(v));   // "15.000" -> "15"
+
+    // ------------------------------------------------------------------ //
+    // Dibujo del ticket en canvas (para guardar/compartir como imagen)
+    // ------------------------------------------------------------------ //
+    const ANCHO = 640, MARGEN = 44, ESCALA = 2;
+
+    // Parte un texto en líneas que quepan en `max` píxeles.
+    function envolver(ctx, texto, max) {
+      const palabras = String(texto).split(/\s+/);
+      const lineas = [];
+      let actual = "";
+      for (const p of palabras) {
+        const prueba = actual ? actual + " " + p : p;
+        if (ctx.measureText(prueba).width > max && actual) { lineas.push(actual); actual = p; }
+        else { actual = prueba; }
+      }
+      if (actual) lineas.push(actual);
+      return lineas;
+    }
+
+    // Se dibuja en dos pasadas: la primera solo mide (para saber el alto del
+    // canvas), la segunda pinta de verdad. Así el ticket crece con las líneas.
+    function pintar(ctx, medir) {
+      const izq = MARGEN, der = ANCHO - MARGEN, centro = ANCHO / 2;
+      let y = MARGEN;
+      const F = {
+        negocio: "700 34px system-ui, sans-serif",
+        tipo:    "500 15px system-ui, sans-serif",
+        meta:    "15px monospace",
+        desc:    "600 19px system-ui, sans-serif",
+        sub:     "15px system-ui, sans-serif",
+        monto:   "600 19px monospace",
+        total:   "700 30px system-ui, sans-serif",
+        pie:     "13px system-ui, sans-serif",
+      };
+      const texto = (t, x, fuente, alineacion, color) => {
+        if (!medir) {
+          ctx.font = fuente; ctx.textAlign = alineacion || "left";
+          ctx.fillStyle = color || "#0f172a";
+          ctx.fillText(t, x, y);
+        }
+      };
+      const separador = () => {
+        if (!medir) {
+          ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+          ctx.beginPath(); ctx.moveTo(izq, y); ctx.lineTo(der, y); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      };
+
+      ctx.font = F.negocio;
+      const tituloLineas = envolver(ctx, nota.negocio, der - izq);
+      for (const l of tituloLineas) { y += 34; texto(l, centro, F.negocio, "center"); }
+      y += 26; texto("N O T A   D E   V E N T A", centro, F.tipo, "center", "#64748b");
+
+      y += 34; texto("N.º " + (nota.numero || "s/n"), izq, F.meta);
+                texto(extra.fecha, der, F.meta, "right", "#64748b");
+      y += 26; texto("Cliente: " + nota.cliente_nombre, izq, F.meta, "left", "#334155");
+
+      y += 26; separador();
+
+      for (const d of nota.detalles) {
+        ctx.font = F.desc;
+        const anchoMonto = 150;
+        const lineas = envolver(ctx, d.descripcion, der - izq - anchoMonto);
+        y += 32;
+        texto(lineas[0], izq, F.desc);
+        texto(dinero(d.total), der, F.monto, "right");
+        for (let i = 1; i < lineas.length; i++) { y += 26; texto(lineas[i], izq, F.desc); }
+        const partes = [];
+        if (d.detalle) partes.push(d.detalle);
+        if (d.cantidad) partes.push(cant(d.cantidad) + " × " + dinero(d.precio_unitario));
+        if (partes.length) { y += 24; texto(partes.join("  ·  "), izq, F.sub, "left", "#64748b"); }
+        y += 10;
+      }
+
+      y += 24; separador();
+      y += 32; texto("Subtotal", izq, F.sub, "left", "#64748b");
+               texto(dinero(nota.subtotal), der, F.sub, "right", "#64748b");
+      y += 26; texto("IVA incluido", izq, F.sub, "left", "#64748b");
+               texto(dinero(nota.impuesto_total), der, F.sub, "right", "#64748b");
+      y += 22;
+      if (!medir) {
+        ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(izq, y); ctx.lineTo(der, y); ctx.stroke();
+      }
+      y += 40; texto("TOTAL", izq, F.total);
+               texto(dinero(nota.total), der, F.total, "right");
+
+      const sello = nota.estado === "anulada" ? "ANULADA" : nota.estado_pago_display;
+      y += 40; texto(sello, centro, F.sub, "center",
+                     nota.estado === "anulada" ? "#991b1b" : "#166534");
+
+      // QR (mismo link que la página) para que la imagen reenviada siga siendo útil.
+      const modulos = qr.length, lado = 220, paso = lado / modulos;
+      y += 30;
+      if (!medir) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(centro - lado / 2, y, lado, lado);
+        ctx.fillStyle = "#0f172a";
+        for (let f = 0; f < modulos; f++) {
+          for (let c = 0; c < modulos; c++) {
+            if (qr[f][c]) {
+              ctx.fillRect(centro - lado / 2 + c * paso, y + f * paso,
+                           Math.ceil(paso), Math.ceil(paso));
+            }
+          }
+        }
+      }
+      y += lado + 26;
+      texto("Escanea para ver tu nota en línea", centro, F.pie, "center", "#64748b");
+      y += 22; texto(extra.url.replace(/^https?:\/\//, ""), centro, F.pie, "center", "#94a3b8");
+
+      return y + MARGEN;
+    }
+
+    function generarCanvas() {
+      const medidor = document.createElement("canvas").getContext("2d");
+      const alto = pintar(medidor, true);
+      const lienzo = document.createElement("canvas");
+      lienzo.width = ANCHO * ESCALA;
+      lienzo.height = alto * ESCALA;
+      const ctx = lienzo.getContext("2d");
+      ctx.scale(ESCALA, ESCALA);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, ANCHO, alto);
+      ctx.textBaseline = "alphabetic";
+      pintar(ctx, false);
+      return lienzo;
+    }
+
+    const nombreArchivo = "nota-" + (nota.numero || "venta").replace(/\s+/g, "") + ".png";
+
+    function descargar(blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = nombreArchivo;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      decir("Imagen descargada. Búscala en tus Descargas.");
+    }
+
+    // ------------------------------------------------------------------ //
+    // Acciones
+    // ------------------------------------------------------------------ //
+    document.getElementById("btn-imagen").addEventListener("click", async function () {
+      this.disabled = true;
+      decir("Generando la imagen…");
+      try {
+        const lienzo = generarCanvas();
+        const blob = await new Promise((res) => lienzo.toBlob(res, "image/png"));
+        const archivo = new File([blob], nombreArchivo, { type: "image/png" });
+        // Web Share con archivos: el sistema ofrece galería, WhatsApp, correo…
+        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+          await navigator.share({
+            files: [archivo],
+            title: "Nota de venta " + (nota.numero || ""),
+            text: nota.negocio + " · Total " + dinero(nota.total),
+          });
+          decir("Listo.");
+        } else {
+          descargar(blob);   // navegadores sin Web Share (escritorio)
+        }
+      } catch (e) {
+        if (e && e.name === "AbortError") { decir(""); }   // el usuario canceló
+        else { decir("No se pudo generar la imagen: " + e.message); }
+      } finally {
+        this.disabled = false;
+      }
+    });
+
+    const mensajeWsp =
+      "Nota de venta " + (nota.numero || "") + " — " + nota.negocio +
+      "\nTotal: " + dinero(nota.total) + "\n" + extra.url;
+    document.getElementById("btn-wsp").href =
+      "https://wa.me/?text=" + encodeURIComponent(mensajeWsp);
+
+    document.getElementById("btn-imprimir").addEventListener("click", () => window.print());
+
+    document.getElementById("btn-copiar").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(extra.url);
+        decir("Link copiado.");
+      } catch (e) {
+        decir(extra.url);   // sin permiso de portapapeles: al menos mostrarlo
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

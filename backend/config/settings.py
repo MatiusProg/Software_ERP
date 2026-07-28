@@ -149,8 +149,16 @@ SIMPLE_JWT = {
 # CORS — la PWA (frontend) consumirá esta API desde otro origen
 # ----------------------------------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
-    o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5500,http://127.0.0.1:5500").split(",") if o.strip()
+    o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173,http://127.0.0.1:5173").split(",") if o.strip()
 ]
+
+
+# ----------------------------------------------------------------------------
+# Nota de venta pública (QR)
+# ----------------------------------------------------------------------------
+# Dominio con el que se arman los links del QR. Vacío = se usa el host del
+# request (suficiente en desarrollo y cuando la API sirve también las notas).
+NOTA_PUBLICA_BASE_URL = os.getenv("NOTA_PUBLICA_BASE_URL", "").strip()
 
 
 # ----------------------------------------------------------------------------

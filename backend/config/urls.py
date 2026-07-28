@@ -18,4 +18,6 @@ urlpatterns = [
     path("api/", include("apps.ventas.urls")),
     # Escaparate público (catálogo por slug, sin login)
     path("api/", include("apps.tienda.urls")),
+    # Nota de venta pública por QR: /nota/<token>/ (página para el cliente)
+    path("", include("apps.ventas.urls_publicas")),
 ]

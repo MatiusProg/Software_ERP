@@ -30,18 +30,26 @@ Usuarios de prueba (los crea `python manage.py datos_demo`):
 
 ---
 
-## 2. Lo primero al retomar: **una decisión de una línea**
+## 2. Lo primero al retomar: **desplegar**
 
-Quedó sin cerrar el **orden de trabajo**:
+Decidido: **se despliega primero** y recién después se construye el catálogo.
 
-- **(A) Desplegar primero** — cerrar la Fase 3 en línea (Supabase free + Railway) y
-  después el catálogo. Ventaja: hay algo real que mostrar el lunes desde el celular,
-  y el riesgo del despliegue se descubre con tiempo, no la noche antes.
-- **(B) Catálogo primero** — construir todo el catálogo rico y desplegar al final.
+**Base de datos** (ya cerrado): Supabase free ahora; cuando entre el primer cliente
+que paga, mover el Postgres a Railway cambiando `DATABASE_URL` — una variable, sin
+tocar código ni migraciones.
 
-> Decisión de base de datos **ya cerrada**: Supabase free ahora; cuando entre el
-> primer cliente que paga, mover el Postgres a Railway cambiando `DATABASE_URL`
-> (una variable, sin tocar código). Pasos en [`DESPLIEGUE.md`](DESPLIEGUE.md).
+Para arrancar hace falta que el usuario cree las cuentas (~30 min, es lo único que
+no se puede adelantar):
+
+1. Proyecto en **Supabase** → copiar la cadena de conexión del *pooler* (puerto 6543).
+2. Cuenta en **Railway** → *Deploy from GitHub repo* sobre este repositorio.
+3. Pegar las variables de entorno de la tabla de [`DESPLIEGUE.md`](DESPLIEGUE.md) §2.
+
+El resto (migraciones, `collectstatic`, gunicorn, dominios, CORS/CSRF) ya está
+resuelto en `railway.json` y en `settings.py`.
+
+Al terminar, la prueba que importa: **emitir una venta y escanear el QR con un
+celular de verdad** — que abra la nota y deje guardarla en la galería.
 
 ---
 

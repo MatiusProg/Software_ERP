@@ -153,6 +153,12 @@ class Cotizacion(ModeloTenant):
         VENCIDA = "vencida", "Vencida"
 
     numero = models.CharField(max_length=20, blank=True)
+    # Se marca sola cuando alguna línea se autorizó por debajo del precio mínimo
+    # del producto (ver la validación en serializers.py). Queda para filtrar y
+    # revisar después quién negoció por debajo del piso.
+    bajo_minimo = models.BooleanField(
+        "autorizada bajo el precio mínimo", default=False
+    )
     cliente = models.ForeignKey(
         "terceros.Tercero", on_delete=models.PROTECT, null=True, blank=True,
         related_name="cotizaciones",
@@ -212,6 +218,10 @@ class Venta(ModeloTenant):
     # expone el id secuencial ni exige login. Ver apps/ventas/publico.py.
     token_publico = models.UUIDField(
         "token público", default=uuid.uuid4, editable=False, unique=True
+    )
+    # Igual que en Cotizacion: registro de que se vendió bajo el piso de precio.
+    bajo_minimo = models.BooleanField(
+        "autorizada bajo el precio mínimo", default=False
     )
     cliente = models.ForeignKey(
         "terceros.Tercero", on_delete=models.PROTECT, null=True, blank=True,

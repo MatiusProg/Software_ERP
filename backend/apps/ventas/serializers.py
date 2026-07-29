@@ -95,6 +95,42 @@ class ListaItemSerializer(_LineaSerializerBase):
 # --------------------------------------------------------------------------- #
 # Mixin de cabecera con líneas anidadas
 # --------------------------------------------------------------------------- #
+def precio_efectivo(linea):
+    """Precio por unidad que representa una línea.
+
+    En modo unitario es el ``precio_unitario`` tal cual. En modo directo no hay
+    cantidad, así que se asume **1 unidad**: el total es entonces el precio de
+    esa unidad. Asumir 1 es lo conservador — si en realidad eran 6 unidades, el
+    total será mayor y la línea pasa el control en vez de dar un falso aviso.
+    """
+    cantidad = linea.get("cantidad")
+    unitario = linea.get("precio_unitario")
+    if cantidad is not None and unitario is not None:
+        return unitario
+    total = linea.get("total") or CERO
+    return total / (cantidad or Decimal("1"))
+
+
+def lineas_bajo_minimo(lineas_data):
+    """Líneas que van por debajo del ``precio_venta_minimo`` de su producto.
+
+    Solo se controlan las líneas con un producto del catálogo detrás: en una
+    línea de texto libre no hay piso contra el cual comparar.
+    """
+    avisos = []
+    for linea in lineas_data:
+        producto = linea.get("producto")
+        if producto is None or not producto.precio_venta_minimo:
+            continue
+        precio = precio_efectivo(linea)
+        if precio < producto.precio_venta_minimo:
+            avisos.append(
+                f"{producto.nombre}: Bs {precio.quantize(Decimal('0.01'))} está por "
+                f"debajo del mínimo (Bs {producto.precio_venta_minimo})."
+            )
+    return avisos
+
+
 class _DocumentoConLineasMixin:
     """create/update de líneas anidadas + recálculo de totales.
 
@@ -116,6 +152,30 @@ class _DocumentoConLineasMixin:
     def _org(self):
         req = self.context.get("request")
         return getattr(req, "organizacion", None) or get_organizacion_actual()
+
+    def validate(self, attrs):
+        """Corta la venta si alguna línea baja del precio mínimo del producto.
+
+        No es un aviso que se pueda ignorar: la API responde 400 y solo acepta el
+        documento si vuelve con ``autorizar_precio_bajo=true``. Así el descuento
+        es siempre una decisión consciente, y queda marcado en ``bajo_minimo``.
+        """
+        attrs = super().validate(attrs)
+        if not self.fiscal:
+            return attrs
+        lineas = attrs.get(self.campo_lineas)
+        if not lineas:
+            return attrs
+        avisos = lineas_bajo_minimo(lineas)
+        if avisos and not attrs.get("autorizar_precio_bajo"):
+            raise serializers.ValidationError({
+                "precio_bajo_minimo": avisos,
+                "detail": (
+                    "Hay líneas por debajo del precio mínimo. Confirma el descuento "
+                    "para continuar."
+                ),
+            })
+        return attrs
 
     def _crear_lineas(self, cabecera, lineas_data):
         for i, data in enumerate(lineas_data):
@@ -148,7 +208,10 @@ class _DocumentoConLineasMixin:
 
     @transaction.atomic
     def create(self, validated_data):
+        validated_data.pop("autorizar_precio_bajo", None)  # es solo de entrada
         lineas_data = validated_data.pop(self.campo_lineas, [])
+        if self.fiscal:
+            validated_data["bajo_minimo"] = bool(lineas_bajo_minimo(lineas_data))
         if self.tipo_secuencia:
             validated_data["numero"] = siguiente_numero(
                 self._org(), self.tipo_secuencia, self.prefijo
@@ -160,7 +223,10 @@ class _DocumentoConLineasMixin:
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        validated_data.pop("autorizar_precio_bajo", None)
         lineas_data = validated_data.pop(self.campo_lineas, None)
+        if self.fiscal and lineas_data is not None:
+            instance.bajo_minimo = bool(lineas_bajo_minimo(lineas_data))
         for campo, valor in validated_data.items():
             setattr(instance, campo, valor)
         instance.save()
@@ -184,6 +250,8 @@ class CotizacionSerializer(_DocumentoConLineasMixin, serializers.ModelSerializer
 
     detalles = CotizacionDetalleSerializer(many=True, required=False)
     estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+    # Confirmación explícita para cotizar por debajo del precio mínimo.
+    autorizar_precio_bajo = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = Cotizacion
@@ -191,10 +259,11 @@ class CotizacionSerializer(_DocumentoConLineasMixin, serializers.ModelSerializer
             "id", "numero", "cliente", "cliente_nombre",
             "estado", "estado_display", "validez_dias", "notas",
             "subtotal", "impuesto_total", "total",
+            "bajo_minimo", "autorizar_precio_bajo",
             "detalles", "creado_en", "actualizado_en",
         ]
         read_only_fields = [
-            "numero", "subtotal", "impuesto_total", "total",
+            "numero", "subtotal", "impuesto_total", "total", "bajo_minimo",
             "creado_en", "actualizado_en",
         ]
 
@@ -213,6 +282,8 @@ class VentaSerializer(_DocumentoConLineasMixin, serializers.ModelSerializer):
     # Nota pública por QR: el panel muestra el QR y comparte el link con el cliente.
     url_publica = serializers.SerializerMethodField()
     url_qr = serializers.SerializerMethodField()
+    # Confirmación explícita para vender por debajo del precio mínimo.
+    autorizar_precio_bajo = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = Venta
@@ -221,11 +292,12 @@ class VentaSerializer(_DocumentoConLineasMixin, serializers.ModelSerializer):
             "estado", "estado_display", "estado_pago", "estado_pago_display",
             "cotizacion_origen", "notas",
             "subtotal", "impuesto_total", "total",
+            "bajo_minimo", "autorizar_precio_bajo",
             "token_publico", "url_publica", "url_qr",
             "detalles", "creado_en", "actualizado_en",
         ]
         read_only_fields = [
-            "numero", "subtotal", "impuesto_total", "total",
+            "numero", "subtotal", "impuesto_total", "total", "bajo_minimo",
             "token_publico", "creado_en", "actualizado_en",
         ]
 

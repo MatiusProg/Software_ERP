@@ -1,5 +1,8 @@
+from decimal import Decimal
+
 from apps.comun.pruebas import BaseTenantAPITest
 from apps.auditoria.models import Bitacora
+from apps.catalogo.models import Producto
 
 
 class VentaAPITest(BaseTenantAPITest):
@@ -93,6 +96,114 @@ class VentaAPITest(BaseTenantAPITest):
     def test_anonimo_rechazado(self):
         r = self.client.get("/api/ventas/")
         self.assertEqual(r.status_code, 401)
+
+
+class PrecioMinimoTest(BaseTenantAPITest):
+    """El piso de precio del producto se respeta al vender y al cotizar.
+
+    Vender bajo el mínimo no está prohibido —a veces se negocia— pero no puede
+    pasar por descuido: la API lo rechaza y solo lo acepta con una confirmación
+    explícita, que además queda marcada en el documento.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.auth("prop@a.test")
+        self.producto = Producto.objects.create(
+            organizacion=self.org, sku="P-1", nombre="Coca 2L",
+            precio_venta=Decimal("18.00"), precio_venta_minimo=Decimal("16.00"),
+            precio_compra=Decimal("13.00"), precio_compra_maximo=Decimal("15.00"),
+            impuesto=Decimal("13"),
+        )
+
+    def _vender(self, linea, **extra):
+        datos = {"cliente_nombre": "Mostrador", "detalles": [linea]}
+        datos.update(extra)
+        return self.client.post("/api/ventas/", datos, format="json")
+
+    def test_precio_unitario_bajo_el_minimo_se_rechaza(self):
+        r = self._vender({
+            "producto": self.producto.id, "cantidad": "2",
+            "precio_unitario": "15.00", "impuesto": "13",
+        })
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("precio_bajo_minimo", r.data)
+        self.assertIn("16.00", r.data["precio_bajo_minimo"][0])
+
+    def test_se_acepta_con_autorizacion_y_queda_marcada(self):
+        r = self._vender(
+            {"producto": self.producto.id, "cantidad": "2",
+             "precio_unitario": "15.00", "impuesto": "13"},
+            autorizar_precio_bajo=True,
+        )
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertTrue(r.data["bajo_minimo"])
+        self.assertEqual(r.data["total"], "30.00")
+
+    def test_venta_normal_no_queda_marcada(self):
+        r = self._vender({
+            "producto": self.producto.id, "cantidad": "2",
+            "precio_unitario": "18.00", "impuesto": "13",
+        })
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertFalse(r.data["bajo_minimo"])
+
+    def test_total_directo_tambien_se_controla(self):
+        """Sin cantidad se asume 1 unidad, así que un total de 12 es bajo el piso."""
+        r = self._vender({"producto": self.producto.id, "total": "12.00", "impuesto": "13"})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("precio_bajo_minimo", r.data)
+
+    def test_total_directo_de_varias_unidades_no_da_falso_aviso(self):
+        """100 Bs pueden ser 6 unidades a 16.67: no hay motivo para frenar."""
+        r = self._vender({"producto": self.producto.id, "total": "100.00", "impuesto": "13"})
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertFalse(r.data["bajo_minimo"])
+
+    def test_linea_libre_sin_producto_no_se_controla(self):
+        r = self._vender({"descripcion": "Algo suelto", "total": "1.00", "impuesto": "13"})
+        self.assertEqual(r.status_code, 201, r.data)
+
+    def test_editar_una_venta_tambien_se_controla(self):
+        vid = self._vender({
+            "producto": self.producto.id, "cantidad": "1",
+            "precio_unitario": "18.00", "impuesto": "13",
+        }).data["id"]
+        r = self.client.patch(f"/api/ventas/{vid}/", {"detalles": [
+            {"producto": self.producto.id, "cantidad": "1",
+             "precio_unitario": "10.00", "impuesto": "13"},
+        ]}, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("precio_bajo_minimo", r.data)
+
+    def test_cotizacion_tambien_respeta_el_minimo(self):
+        datos = {"cliente_nombre": "Cliente", "detalles": [
+            {"producto": self.producto.id, "cantidad": "1",
+             "precio_unitario": "14.00", "impuesto": "13"},
+        ]}
+        r = self.client.post("/api/cotizaciones/", datos, format="json")
+        self.assertEqual(r.status_code, 400)
+
+        datos["autorizar_precio_bajo"] = True
+        r = self.client.post("/api/cotizaciones/", datos, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertTrue(r.data["bajo_minimo"])
+
+        # Al convertirla en venta, la venta hereda la marca sin volver a preguntar.
+        venta = self.client.post(f"/api/cotizaciones/{r.data['id']}/convertir_en_venta/")
+        self.assertEqual(venta.status_code, 201, venta.data)
+        self.assertTrue(venta.data["bajo_minimo"])
+
+    def test_se_pueden_listar_las_ventas_bajo_minimo(self):
+        self._vender(
+            {"producto": self.producto.id, "cantidad": "1",
+             "precio_unitario": "15.00", "impuesto": "13"},
+            autorizar_precio_bajo=True,
+        )
+        self._vender({"producto": self.producto.id, "cantidad": "1",
+                      "precio_unitario": "18.00", "impuesto": "13"})
+        r = self.client.get("/api/ventas/?bajo_minimo=true")
+        self.assertEqual(r.data["count"], 1)
 
 
 class NotaPublicaQRTest(BaseTenantAPITest):

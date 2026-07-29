@@ -27,7 +27,7 @@ class CotizacionViewSet(TenantModelViewSet):
     permission_classes = [MiembroEscribeAdminBorra]
     queryset = Cotizacion.objects.select_related("cliente").prefetch_related("detalles").all()
     serializer_class = CotizacionSerializer
-    filterset_fields = ["estado", "cliente"]
+    filterset_fields = ["estado", "cliente", "bajo_minimo"]
     search_fields = ["numero", "cliente_nombre"]
     ordering_fields = ["creado_en", "numero", "total"]
 
@@ -45,6 +45,9 @@ class CotizacionViewSet(TenantModelViewSet):
                 cliente_nombre=cotizacion.cliente_nombre,
                 cotizacion_origen=cotizacion,
                 notas=cotizacion.notas,
+                # El descuento ya se autorizó al cotizar: la venta hereda la marca
+                # en vez de volver a pedir confirmación por el mismo precio.
+                bajo_minimo=cotizacion.bajo_minimo,
             )
             total = impuesto = CERO
             for d in cotizacion.detalles.all():
@@ -70,7 +73,7 @@ class VentaViewSet(TenantModelViewSet):
     permission_classes = [MiembroEscribeAdminBorra]
     queryset = Venta.objects.select_related("cliente", "cotizacion_origen").prefetch_related("detalles").all()
     serializer_class = VentaSerializer
-    filterset_fields = ["estado", "estado_pago", "cliente"]
+    filterset_fields = ["estado", "estado_pago", "cliente", "bajo_minimo"]
     search_fields = ["numero", "cliente_nombre"]
     ordering_fields = ["creado_en", "numero", "total"]
 

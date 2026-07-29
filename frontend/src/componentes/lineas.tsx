@@ -25,6 +25,8 @@ export interface LineaEditable {
   precioUnitario: string;
   total: string;
   impuesto: string;
+  /** Precio mínimo de venta del producto (vacío en líneas de texto libre). */
+  minimo: string;
   comprado?: boolean;
 }
 
@@ -41,6 +43,7 @@ export function nuevaLinea(datos: Partial<LineaEditable> = {}): LineaEditable {
     precioUnitario: "",
     total: "",
     impuesto: "13",
+    minimo: "",
     ...datos,
   };
 }
@@ -53,12 +56,35 @@ export function lineaDesdeProducto(p: Producto): LineaEditable {
     cantidad: "1",
     precioUnitario: p.precio_venta,
     impuesto: p.impuesto,
+    minimo: p.precio_venta_minimo,
   });
 }
 
 export function totalLinea(l: LineaEditable): number {
   if (l.modoUnitario) return (Number(l.cantidad) || 0) * (Number(l.precioUnitario) || 0);
   return Number(l.total) || 0;
+}
+
+/**
+ * Precio por unidad que representa la línea. Espeja el cálculo del backend
+ * (`precio_efectivo` en apps/ventas/serializers.py): sin cantidad se asume una
+ * unidad, que es lo conservador.
+ */
+export function precioEfectivo(l: LineaEditable): number {
+  if (l.modoUnitario) return Number(l.precioUnitario) || 0;
+  return (Number(l.total) || 0) / (Number(l.cantidad) || 1);
+}
+
+export function bajoMinimo(l: LineaEditable): boolean {
+  const minimo = Number(l.minimo) || 0;
+  return !!l.producto && minimo > 0 && precioEfectivo(l) < minimo;
+}
+
+/** Avisos para confirmar antes de guardar (uno por línea bajo el piso). */
+export function avisosBajoMinimo(lineas: LineaEditable[]): string[] {
+  return lineas
+    .filter(bajoMinimo)
+    .map((l) => `${l.descripcion}: ${dinero(precioEfectivo(l))} — el mínimo es ${dinero(l.minimo)}`);
 }
 
 /** Totales del documento, con el IVA ya contenido en los precios. */
@@ -147,7 +173,7 @@ export function EditorLineas({ lineas, setLineas, fiscal, conComprado, refBuscad
         )}
 
         {lineas.map((l) => (
-          <div className="linea-pos" key={l.clave}>
+          <div className={`linea-pos${bajoMinimo(l) ? " alerta" : ""}`} key={l.clave}>
             <div>
               <input
                 className="desc-input"
@@ -208,10 +234,17 @@ export function EditorLineas({ lineas, setLineas, fiscal, conComprado, refBuscad
 
             <div className="num" style={{ fontWeight: 700 }}>
               {dinero(totalLinea(l))}
-              {fiscal && Number(l.impuesto) > 0 && (
-                <div style={{ fontSize: 11, fontWeight: 400, color: "var(--tenue)" }}>
-                  IVA {cantidad(l.impuesto)}% incl.
+              {bajoMinimo(l) ? (
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--peligro)" }}>
+                  bajo el mín. {dinero(l.minimo)}
                 </div>
+              ) : (
+                fiscal &&
+                Number(l.impuesto) > 0 && (
+                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--tenue)" }}>
+                    IVA {cantidad(l.impuesto)}% incl.
+                  </div>
+                )
               )}
               {l.modoUnitario && (
                 <button

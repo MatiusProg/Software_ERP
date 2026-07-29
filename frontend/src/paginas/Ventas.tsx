@@ -17,12 +17,14 @@ export function Ventas() {
   const { permisos } = useSesion();
   const [busqueda, setBusqueda] = useState("");
   const [estadoPago, setEstadoPago] = useState("");
+  const [soloBajoMinimo, setSoloBajoMinimo] = useState(false);
   const [abierta, setAbierta] = useState<Venta | null>(null);
   const [error, setError] = useState("");
 
   const { datos, total, cargando, recargar } = useLista<Venta>("/ventas/", {
     search: busqueda || undefined,
     estado_pago: estadoPago || undefined,
+    bajo_minimo: soloBajoMinimo || undefined,
   });
 
   async function marcarPagada(venta: Venta) {
@@ -55,6 +57,14 @@ export function Ventas() {
             <option value="pendiente">Pendientes</option>
             <option value="parcial">Parciales</option>
           </select>
+          <label className="fila" style={{ gap: 6, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={soloBajoMinimo}
+              onChange={(e) => setSoloBajoMinimo(e.target.checked)}
+            />
+            Bajo el mínimo
+          </label>
         </div>
       </div>
 
@@ -86,7 +96,14 @@ export function Ventas() {
                     <strong>{v.numero}</strong>
                   </td>
                   <td style={{ color: "var(--tenue)" }}>{fecha(v.creado_en)}</td>
-                  <td>{v.cliente_nombre || "—"}</td>
+                  <td>
+                    {v.cliente_nombre || "—"}
+                    {v.bajo_minimo && (
+                      <span className="chip mal" style={{ marginLeft: 6 }} title="Se autorizó vender por debajo del precio mínimo">
+                        bajo mín.
+                      </span>
+                    )}
+                  </td>
                   <td>
                     {v.estado === "anulada" ? (
                       <ChipEstado estado="anulada" texto="Anulada" />

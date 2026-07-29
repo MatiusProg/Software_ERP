@@ -71,8 +71,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    # Sirve los estáticos del admin en producción sin necesitar nginx.
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -83,6 +81,12 @@ MIDDLEWARE = [
     # para el scoping multi-tenant. Debe ir DESPUÉS de AuthenticationMiddleware.
     "apps.comun.middleware.CurrentOrganizationMiddleware",
 ]
+
+# WhiteNoise sirve los estáticos del admin en producción (sin nginx). En
+# desarrollo estorba: avisaría de que falta la carpeta de collectstatic, que ahí
+# la sirve el propio Django.
+if not DEBUG:
+    MIDDLEWARE.insert(2, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 ROOT_URLCONF = "config.urls"
 

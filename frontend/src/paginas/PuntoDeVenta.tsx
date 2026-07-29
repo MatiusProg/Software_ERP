@@ -20,6 +20,7 @@ import { NotaQR } from "../componentes/NotaQR";
 import { SelectorCliente } from "../componentes/SelectorCliente";
 import {
   EditorLineas,
+  avisosBajoMinimo,
   lineasAPayload,
   totalesDe,
   type LineaEditable,
@@ -37,9 +38,11 @@ export function PuntoDeVenta() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [emitida, setEmitida] = useState<Venta | null>(null);
+  const [porConfirmar, setPorConfirmar] = useState<string[] | null>(null);
   const buscador = useRef<HTMLInputElement>(null);
 
   const { total, impuesto, subtotal } = totalesDe(lineas, true);
+  const avisos = avisosBajoMinimo(lineas);
 
   // F2 devuelve el cursor al buscador sin soltar el teclado.
   useEffect(() => {
@@ -63,8 +66,17 @@ export function PuntoDeVenta() {
     buscador.current?.focus();
   }
 
-  async function cobrar() {
+  /**
+   * Emite la venta. Si hay líneas por debajo del precio mínimo, primero pide
+   * confirmación: el backend también las rechaza, así que el aviso de aquí es
+   * para no hacer ir y volver al vendedor, no la única defensa.
+   */
+  async function cobrar(autorizado = false) {
     if (!lineas.length) return;
+    if (!autorizado && avisos.length) {
+      setPorConfirmar(avisos);
+      return;
+    }
     setGuardando(true);
     setError("");
     try {
@@ -73,11 +85,18 @@ export function PuntoDeVenta() {
         cliente_nombre: cliente ? "" : nombreLibre.trim(),
         estado_pago: estadoPago,
         notas: notas.trim(),
+        autorizar_precio_bajo: autorizado,
         detalles: lineasAPayload(lineas, true),
       });
+      setPorConfirmar(null);
       setEmitida(venta);
     } catch (e) {
-      setError(mensajeDeError(e));
+      // Por si el backend detecta un caso que el panel no vio (precios que
+      // cambiaron mientras se armaba la venta).
+      const datos = (e as { response?: { data?: { precio_bajo_minimo?: string[] } } })
+        .response?.data;
+      if (datos?.precio_bajo_minimo) setPorConfirmar(datos.precio_bajo_minimo);
+      else setError(mensajeDeError(e));
     } finally {
       setGuardando(false);
     }
@@ -149,16 +168,53 @@ export function PuntoDeVenta() {
 
           <Error>{error}</Error>
 
+          {avisos.length > 0 && (
+            <div className="error" style={{ marginTop: 12 }}>
+              {avisos.length === 1
+                ? "1 producto va por debajo de su precio mínimo."
+                : `${avisos.length} productos van por debajo de su precio mínimo.`}{" "}
+              Se pedirá confirmación al cobrar.
+            </div>
+          )}
+
           <button
             className="primario grande"
             style={{ marginTop: 14 }}
             disabled={!lineas.length || guardando}
-            onClick={cobrar}
+            onClick={() => cobrar()}
           >
             {guardando ? "Emitiendo…" : `Cobrar ${dinero(total)}`}
           </button>
         </div>
       </div>
+
+      {porConfirmar && (
+        <Modal
+          titulo="Vas a vender por debajo del mínimo"
+          onCerrar={() => setPorConfirmar(null)}
+          pie={
+            <>
+              <button onClick={() => setPorConfirmar(null)}>Revisar precios</button>
+              <button className="primario" disabled={guardando} onClick={() => cobrar(true)}>
+                {guardando ? "Emitiendo…" : "Autorizar y cobrar"}
+              </button>
+            </>
+          }
+        >
+          <p style={{ marginTop: 0 }}>
+            Estos precios están por debajo del piso que fijaste en el catálogo:
+          </p>
+          <ul style={{ paddingLeft: 18, lineHeight: 1.8 }}>
+            {porConfirmar.map((a, i) => (
+              <li key={i}>{a}</li>
+            ))}
+          </ul>
+          <p style={{ color: "var(--tenue)", fontSize: 13, marginBottom: 0 }}>
+            Si autorizas, la venta se emite igual y queda <strong>marcada</strong> para
+            que puedas revisarla después (filtro «bajo el mínimo» en Ventas).
+          </p>
+        </Modal>
+      )}
 
       {emitida && (
         <Modal

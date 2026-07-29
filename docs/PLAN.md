@@ -55,6 +55,13 @@ Doble público:
    del cliente. La página es autocontenida (canvas + Web Share API, sin CDN) y el
    QR se genera en el servidor como matriz de módulos, servible en SVG — el mismo
    dato servirá para imprimirlo en el ticket térmico de la Fase 5.
+10. **El precio mínimo se respeta al vender**: si una línea con producto del
+   catálogo va por debajo de `precio_venta_minimo`, la API responde **400** y solo
+   acepta el documento si vuelve con `autorizar_precio_bajo=true`. El documento
+   queda marcado (`bajo_minimo`) y se puede filtrar, para revisar después quién
+   negoció bajo el piso. Aplica a ventas y cotizaciones (cotizar bajo el mínimo es
+   prometer venderlo así). En modo directo, sin cantidad, se asume 1 unidad: es lo
+   conservador, evita falsos avisos cuando el total es de varias unidades.
 
 ## 4. Roadmap por fases
 

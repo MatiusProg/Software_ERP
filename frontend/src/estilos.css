@@ -243,6 +243,12 @@ tbody tr:hover { background: var(--superficie-2); }
   border-bottom: 1px dashed var(--borde);
 }
 .linea-pos .desc-input { font-weight: 600; }
+/* Línea que se está vendiendo por debajo del precio mínimo del producto. */
+.linea-pos.alerta {
+  background: var(--peligro-suave);
+  border-radius: var(--radio-sm);
+  padding-left: 8px; padding-right: 8px;
+}
 @media (max-width: 700px) {
   .linea-pos { grid-template-columns: 1fr 1fr; }
   .linea-pos .desc-input { grid-column: 1 / -1; }

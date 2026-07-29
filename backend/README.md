@@ -156,9 +156,27 @@ curl -X POST http://127.0.0.1:8000/api/listas/ -H "Authorization: Bearer $TOKEN"
                 {"descripcion":"Chicle","detalle":"(1/4)","total":"35.00"}]}'
 ```
 
-Filtros: ventas (`estado`, `estado_pago`, `cliente`), cotizaciones (`estado`,
-`cliente`), listas (`estado`, `cliente`). Búsqueda por `numero`/`titulo`/
-`cliente_nombre`.
+Filtros: ventas (`estado`, `estado_pago`, `cliente`, `bajo_minimo`), cotizaciones
+(`estado`, `cliente`, `bajo_minimo`), listas (`estado`, `cliente`). Búsqueda por
+`numero`/`titulo`/`cliente_nombre`.
+
+#### El precio mínimo no se puede saltar por descuido
+
+Si una línea con producto del catálogo va por debajo de su `precio_venta_minimo`,
+la API responde **400**:
+
+```json
+{"precio_bajo_minimo": ["Coca Cola 2L: Bs 14.00 está por debajo del mínimo (Bs 16.00)."],
+ "detail": "Hay líneas por debajo del precio mínimo. Confirma el descuento para continuar."}
+```
+
+Para aceptarlo hay que reenviar el documento con `"autorizar_precio_bajo": true`.
+La venta (o cotización) queda con `bajo_minimo: true` y se puede listar después con
+`/api/ventas/?bajo_minimo=true`. En modo directo, sin cantidad, se asume 1 unidad.
+
+> Hoy cualquiera que pueda vender puede autorizar el descuento. Si más adelante se
+> quiere que solo propietario/admin lo hagan, es una comprobación de rol en
+> `_DocumentoConLineasMixin.validate`.
 
 ### Escaparate público (Fase 3) — sin login
 

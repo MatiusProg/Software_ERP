@@ -99,7 +99,12 @@ interface DocumentoBase {
   actualizado_en: string;
 }
 
-export interface Venta extends DocumentoBase {
+/** Marca que alguna línea se autorizó por debajo del precio mínimo. */
+interface ConPrecioMinimo {
+  bajo_minimo: boolean;
+}
+
+export interface Venta extends DocumentoBase, ConPrecioMinimo {
   numero: string;
   estado_pago: "pendiente" | "parcial" | "pagado";
   estado_pago_display: string;
@@ -113,7 +118,7 @@ export interface Venta extends DocumentoBase {
   url_qr: string;
 }
 
-export interface Cotizacion extends DocumentoBase {
+export interface Cotizacion extends DocumentoBase, ConPrecioMinimo {
   numero: string;
   validez_dias: number;
   subtotal: string;

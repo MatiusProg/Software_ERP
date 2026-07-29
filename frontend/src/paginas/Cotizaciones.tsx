@@ -12,7 +12,13 @@ import type { Cotizacion, Tercero, Venta } from "../api/tipos";
 import { useSesion } from "../auth/sesion";
 import { NotaQR } from "../componentes/NotaQR";
 import { SelectorCliente } from "../componentes/SelectorCliente";
-import { EditorLineas, lineasAPayload, totalesDe, type LineaEditable } from "../componentes/lineas";
+import {
+  EditorLineas,
+  avisosBajoMinimo,
+  lineasAPayload,
+  totalesDe,
+  type LineaEditable,
+} from "../componentes/lineas";
 import { Campo, Cargando, ChipEstado, Error, Modal, Vacio } from "../componentes/ui";
 import { dinero, fecha } from "../util/formato";
 
@@ -172,8 +178,16 @@ function EditorCotizacion({
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const { total } = totalesDe(lineas, true);
+  const avisos = avisosBajoMinimo(lineas);
 
-  async function guardar() {
+  async function guardar(autorizado = false) {
+    // Cotizar por debajo del mínimo es prometer venderlo así: se confirma igual
+    // que en el punto de venta.
+    if (!autorizado && avisos.length) {
+      const detalle = avisos.map((a) => `• ${a}`).join("\n");
+      if (!confirm(`Estos precios están por debajo del mínimo:\n\n${detalle}\n\n¿Cotizar igual?`)) return;
+      autorizado = true;
+    }
     setGuardando(true);
     setError("");
     try {
@@ -182,6 +196,7 @@ function EditorCotizacion({
         cliente_nombre: cliente ? "" : nombreLibre.trim(),
         validez_dias: Number(validez) || 15,
         notas: notas.trim(),
+        autorizar_precio_bajo: autorizado,
         detalles: lineasAPayload(lineas, true),
       });
       onGuardada();
@@ -200,7 +215,7 @@ function EditorCotizacion({
       pie={
         <>
           <button onClick={onCerrar}>Cancelar</button>
-          <button className="primario" disabled={!lineas.length || guardando} onClick={guardar}>
+          <button className="primario" disabled={!lineas.length || guardando} onClick={() => guardar()}>
             {guardando ? "Guardando…" : `Guardar · ${dinero(total)}`}
           </button>
         </>

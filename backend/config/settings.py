@@ -127,6 +127,16 @@ if DATABASE_URL:
             ssl_require=env_bool("DB_SSL_REQUIRE", True),
         )
     }
+
+    # El pooler de Supabase (puerto 6543) es PgBouncer en modo transacción: cada
+    # transacción puede caer en una conexión distinta, así que no sobreviven ni
+    # las sentencias preparadas (psycopg3 las crea solo tras repetir una consulta)
+    # ni los cursores del lado del servidor. Sin esto el despliegue arranca bien
+    # y falla más tarde, cuando una consulta ya se repitió lo suficiente.
+    _usa_pooler = ":6543" in DATABASE_URL or env_bool("DB_POOLER", False)
+    if _usa_pooler:
+        DATABASES["default"].setdefault("OPTIONS", {})["prepare_threshold"] = None
+        DISABLE_SERVER_SIDE_CURSORS = True
 else:
     DATABASES = {
         "default": {

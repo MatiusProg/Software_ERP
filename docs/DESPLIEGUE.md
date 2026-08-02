@@ -21,8 +21,18 @@ Reparto de piezas:
 
 ## 1. Supabase — la base de datos
 
-1. Crear un proyecto en [supabase.com](https://supabase.com) (región más cercana:
-   *South America (São Paulo)*). Guardar la contraseña de la base.
+1. Crear un proyecto en [supabase.com](https://supabase.com). Guardar la
+   contraseña de la base.
+
+   **La región se elige para que coincida con la de Railway, no con Bolivia.**
+   Railway no tiene servidores en Sudamérica, así que la app vivirá en EE.UU.;
+   dejar la base en São Paulo haría que cada consulta cruzara el continente. Una
+   pantalla del panel dispara decenas de consultas, así que eso se multiplica:
+   ~120 ms por consulta contra ~1 ms si están juntas.
+
+   Mirar qué ciudad dice la UI de Railway (US East suele ser *Virginia*) y elegir
+   esa misma en Supabase — *East US (North Virginia)* u *Ohio* según corresponda.
+   Acertar la costa ya resuelve casi todo; acertar la ciudad ahorra otros ~10 ms.
 2. **Project Settings → Database → Connection string → URI**. Copiar la cadena:
 
    ```
@@ -31,6 +41,13 @@ Reparto de piezas:
 
    Usar la del **pooler** (puerto 6543): Railway abre y cierra conexiones y el
    pooler evita quedarse sin cupo.
+
+   El pooler es PgBouncer en **modo transacción**, que no admite sentencias
+   preparadas ni cursores del lado del servidor. `settings.py` detecta el puerto
+   6543 y los desactiva solo. Si algún día se usa otro pooler en un puerto
+   distinto, poner `DB_POOLER=True` para forzar el mismo ajuste. Saltarse esto no
+   rompe el arranque: falla más tarde, con `prepared statement "..." already
+   exists`, cuando una consulta ya se repitió varias veces.
 3. Probar en local antes de desplegar (con el venv activo, dentro de `backend/`):
 
    ```bash

@@ -1,0 +1,58 @@
+# Entorno de desarrollo:  docker compose up
+#
+#   db   → PostgreSQL 17 (host: localhost:5440, para pgAdmin/DBeaver)
+#   api  → Django con autorecarga en http://localhost:8000
+#
+# El panel React se sigue levantando FUERA de Docker (cd frontend && npm run dev):
+# en Windows, Vite dentro de un contenedor no se entera de los cambios de un
+# volumen montado desde D:\ sin polling, y con polling va lento.
+#
+# Primera vez:  docker compose up -d && docker compose exec api python manage.py datos_demo
+# Pruebas:      docker compose exec api python manage.py test
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: erp_dev
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: erp
+    ports:
+      # 5432/5433 ya los usa el PostgreSQL 18 instalado en Windows.
+      - "5440:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d erp_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    # Misma imagen que producción, pero con runserver (autorecarga) y el código
+    # montado encima, para no reconstruir en cada cambio.
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DJANGO_DEBUG: "True"
+      # 0.0.0.0 + la IP de tu PC en la red, para escanear el QR desde el celular.
+      DJANGO_ALLOWED_HOSTS: "*"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: erp_dev
+      DB_USER: erp
+      DB_PASSWORD: erp
+      # Vacía a propósito: aunque backend/.env traiga una, aquí manda la base del compose.
+      DATABASE_URL: ""
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

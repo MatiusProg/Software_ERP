@@ -28,6 +28,13 @@ SECRET_KEY = os.getenv(
     "django-insecure-y_vd2p66x1i!aqg9wbp#12ry408bq$0zmw6w7qyu@)j0_dd=ud",
 )
 DEBUG = env_bool("DJANGO_DEBUG", True)
+
+# La clave por defecto solo sirve en desarrollo. En producción, arrancar con ella
+# dejaría firmar tokens JWT a cualquiera que lea este archivo en GitHub.
+if not DEBUG and SECRET_KEY.startswith("django-insecure-"):
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured("Falta DJANGO_SECRET_KEY en producción.")
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 # Railway publica el dominio de la app en esta variable; se añade sola para no

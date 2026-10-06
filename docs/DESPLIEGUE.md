@@ -132,8 +132,12 @@ Railway. Hay que agregar el origen de Pages
 - **`DEBUG=False` activa el endurecimiento** (redirección a HTTPS, HSTS, cookies
   seguras). Si algo deja de responder tras desplegar, revisar primero
   `ALLOWED_HOSTS`: un host que falta devuelve 400 sin explicación.
-- **Migraciones**: corren solas en cada despliegue (`startCommand`). Si una falla,
-  el contenedor no arranca — es a propósito, para no servir con la base a medias.
+- **Build**: Railway construye `backend/Dockerfile` (ver `railway.json`), la
+  misma imagen que se prueba en local con `docker compose`. Lo que funciona en tu
+  PC funciona allá.
+- **Migraciones**: corren solas en cada despliegue (`preDeployCommand`). Si una
+  falla, el despliegue se cancela y sigue sirviendo la versión anterior — es a
+  propósito, para no servir con la base a medias.
 - **`datos_demo` es idempotente**: se puede correr en producción para tener con
   qué probar, y borrar esos registros después desde el admin.
 - **El QR depende del dominio**: si más adelante se usa un dominio propio, hay

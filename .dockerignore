@@ -1,0 +1,12 @@
+# Contexto de build = raíz del repo. Se ignora TODO y se deja pasar solo lo que
+# la imagen del backend necesita; así el frontend, node_modules o un .env nunca
+# entran en la imagen por descuido.
+*
+
+!backend/
+backend/.venv/
+backend/.env
+backend/staticfiles/
+backend/media/
+**/__pycache__/
+**/*.py[cod]

@@ -1,0 +1,70 @@
+# Respaldo nocturno de la base de Supabase (que además la mantiene despierta).
+#
+# Por qué existe (docs/PLAN.md, decisión 11): el plan free de Supabase
+#   1. no hace respaldos, y
+#   2. pausa el proyecto tras 7 días sin actividad.
+# Un pg_dump diario resuelve las dos cosas: es el respaldo y es la actividad.
+#
+# El respaldo va CIFRADO (AES-256) porque este repo es público y cualquier
+# usuario logueado en GitHub puede descargar sus artifacts. Sin la frase de
+# RESPALDO_FRASE el archivo no sirve de nada.
+#
+# Secrets del repo (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL   cadena del Session pooler (la de backend/.env)
+#   RESPALDO_FRASE    frase larga para cifrar; guardarla TAMBIÉN fuera de GitHub,
+#                     o los respaldos quedan inservibles
+#
+# Restaurar (en tu PC, con el compose levantado):
+#   gh run download <id> -n respaldo-supabase
+#   gpg --decrypt kinemart-*.dump.gpg > kinemart.dump
+#   docker compose exec -T db createdb -U erp restaurada
+#   docker compose exec -T db pg_restore -U erp -d restaurada --no-owner < kinemart.dump
+# (El aviso «schema "public" already exists» es normal: se puede ignorar.)
+# Probado de punta a punta el 2026-10-06: dump → cifrado → descifrado → restore.
+#
+# Ojo: GitHub desactiva los workflows programados de un repo público tras 60
+# días sin commits. Si eso pasa, llega un correo; se reactiva con un clic.
+
+name: Respaldo Supabase
+
+on:
+  schedule:
+    - cron: "0 7 * * *"   # 07:00 UTC = 03:00 en Bolivia
+  workflow_dispatch:       # botón "Run workflow" para correrlo a mano
+
+jobs:
+  respaldo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: pg_dump con el cliente de PostgreSQL 17
+        # El pg_dump del runner es más viejo que el servidor (17) y se negaría a
+        # correr; se usa el de la imagen oficial, misma versión que Supabase.
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          archivo="kinemart-$(date -u +%Y%m%d-%H%M).dump"
+          docker run --rm -e SUPABASE_DB_URL postgres:17-alpine \
+            sh -c 'pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges --schema=public' \
+            > "$archivo"
+          test -s "$archivo"   # un dump vacío es un fallo, no un respaldo
+          echo "ARCHIVO=$archivo" >> "$GITHUB_ENV"
+          ls -lh "$archivo"
+
+      - name: Cifrar
+        env:
+          RESPALDO_FRASE: ${{ secrets.RESPALDO_FRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$RESPALDO_FRASE"
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+              --passphrase-fd 0 --output "$ARCHIVO.gpg" "$ARCHIVO" <<< "$RESPALDO_FRASE"
+          rm "$ARCHIVO"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: respaldo-supabase
+          path: "*.dump.gpg"
+          retention-days: 30
+          if-no-files-found: error

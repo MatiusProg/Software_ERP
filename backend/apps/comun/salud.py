@@ -14,6 +14,12 @@ from django.db import connection
 from django.http import JsonResponse
 
 
+def raiz(request):
+    """``GET /``: la API no tiene portada; esto evita un 404 que confunde y
+    dice dónde mirar."""
+    return JsonResponse({"servicio": "Kinemart API", "salud": "/salud/"})
+
+
 def salud(request):
     try:
         with connection.cursor() as cursor:

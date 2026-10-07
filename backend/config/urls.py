@@ -2,10 +2,11 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from apps.comun.salud import salud
+from apps.comun.salud import raiz, salud
 from apps.cuentas.views import LoginView
 
 urlpatterns = [
+    path("", raiz, name="raiz"),
     # Sonda de salud (healthcheck de Railway)
     path("salud/", salud, name="salud"),
     path("admin/", admin.site.urls),

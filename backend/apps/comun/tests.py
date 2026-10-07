@@ -6,3 +6,8 @@ class SaludTest(TestCase):
         r = self.client.get("/salud/")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json(), {"estado": "ok"})
+
+    def test_raiz_no_da_404(self):
+        r = self.client.get("/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["salud"], "/salud/")

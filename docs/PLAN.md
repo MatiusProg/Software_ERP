@@ -62,6 +62,45 @@ Doble público:
    negoció bajo el piso. Aplica a ventas y cotizaciones (cotizar bajo el mínimo es
    prometer venderlo así). En modo directo, sin cantidad, se asume 1 unidad: es lo
    conservador, evita falsos avisos cuando el total es de varias unidades.
+11. **Infraestructura de bajo costo, con techo de gasto** (2026-10-06).
+   - **Base de datos:** Supabase free, proyecto `kinemart` en la organización
+     *ArmonIA*, región us-east-1. Django se conecta por el **Session pooler
+     (5432)**.
+   - **API:** Railway Hobby (la cuenta de Karen, compartida), construida con
+     `backend/Dockerfile`, en modo serverless y con 2 workers.
+   - **Techo de gasto en Railway:** límite duro de **$10**, que es el mínimo
+     que permite Railway, y aviso por correo en $5. Si se llega al límite,
+     Railway **apaga** los servicios en vez de cobrar.
+   - **Por qué así:** en otro proyecto, Railway con Postgres propio pasó los $5
+     del Hobby y quedó deuda. Railway cobra la RAM encendida aunque nadie use la
+     app.
+   - **Riesgos aceptados mientras no haya cliente que pague:**
+     - Supabase free se pausa a los 7 días sin actividad. Lo mitiga un workflow
+       programado en GitHub Actions.
+     - Supabase free no hace respaldos. Lo mitiga un `pg_dump` nocturno en
+       GitHub Actions.
+   - **Cuándo revisar esta decisión:** cuando entre el primer cliente que paga, o
+     si el consumo de Railway se acerca al límite.
+     - Base: Supabase Pro ($25, sin pausa, con respaldos diarios) o Postgres en
+       Railway.
+     - Mudarse cuesta poco: se cambia solo `DATABASE_URL`, sin tocar código ni
+       migraciones.
+     - Antes de mudar la API, subir el límite duro, para que Railway no la
+       apague en plena venta.
+12. **Data API de Supabase apagada; RLS pendiente** (2026-10-06).
+   - **El problema:** Supabase publica por REST (PostgREST, con la clave *anon*,
+     que es pública) todas las tablas del esquema `public`. Django crea ahí sus
+     27 tablas sin RLS, incluida `usuarios` con los hashes de contraseña.
+   - **Lo que se hizo:** el ERP no usa esa API (Django se conecta directo a
+     Postgres), así que se **apagó** en *Integrations → Data API*. Storage (S3)
+     no depende de ella.
+   - **Es temporal:** hay que activar RLS con `ENABLE` + `FORCE` y políticas por
+     `organizacion_id`, conectando Django con un rol sin `BYPASSRLS`. Es el patrón
+     ya probado en PROYECTO_MEDICOS (Si2): sus siete reglas están en el README de
+     ese repo.
+   - **Cuándo:** junto con los planes por tenant y antes de la Fase 4.
+   - **Si algún día se vuelve a prender la Data API** (por ejemplo, para
+     Realtime), tiene que ser **después** de tener RLS en todas las tablas.
 
 ## 4. Roadmap por fases
 

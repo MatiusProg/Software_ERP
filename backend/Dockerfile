@@ -26,10 +26,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 FROM python:3.13-slim AS runtime
 
+# WEB_CONCURRENCY = workers de gunicorn (lo lee solo). Cada uno es un proceso
+# con ~80-100 MB, y Railway cobra la RAM encendida: 2 alcanzan para un negocio
+# pequeño. Se sube desde las variables de Railway sin reconstruir.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/venv/bin:$PATH \
-    PORT=8000
+    PORT=8000 \
+    WEB_CONCURRENCY=2
 
 # Usuario sin privilegios: si alguien rompe la app, no es root en el contenedor.
 RUN useradd --create-home --uid 1000 app
@@ -48,4 +52,4 @@ EXPOSE 8000
 
 # Las migraciones NO van aquí: en Railway corren en el preDeployCommand
 # (railway.json) y en desarrollo las corre el compose.
-CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT} --workers 3 --timeout 60 --access-logfile -"]
+CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT} --timeout 60 --access-logfile -"]

@@ -43,6 +43,11 @@ _dominio_railway = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
 if _dominio_railway and _dominio_railway not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(_dominio_railway)
 
+# El healthcheck de Railway llega con este Host. Sin él, Django responde 400,
+# la réplica "nunca queda sana" y el despliegue se cancela.
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    ALLOWED_HOSTS.append("healthcheck.railway.app")
+
 # Django 4+ exige el esquema en los orígenes de confianza para POST/CSRF.
 CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
@@ -248,6 +253,8 @@ if not DEBUG:
     # que la petición es HTTP y entra en un bucle de redirecciones.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+    # El healthcheck de Railway entra por HTTP interno: un 301 lo haría fallar.
+    SECURE_REDIRECT_EXEMPT = [r"^salud/$"]
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))

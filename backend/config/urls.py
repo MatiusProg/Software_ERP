@@ -2,9 +2,12 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from apps.comun.salud import salud
 from apps.cuentas.views import LoginView
 
 urlpatterns = [
+    # Sonda de salud (healthcheck de Railway)
+    path("salud/", salud, name="salud"),
     path("admin/", admin.site.urls),
     # Auth por JWT (login auditado)
     path("api/auth/token/", LoginView.as_view(), name="token_obtain_pair"),

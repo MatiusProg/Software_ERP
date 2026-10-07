@@ -19,7 +19,7 @@ universidad: tiene un cliente real con dos sucursales esperando usarlo.
 | Qué | Enlace |
 |---|---|
 | **API + notas QR** | <https://api-production-6462.up.railway.app> — dominio provisional de Railway |
-| Comprobación rápida de que la API responde | <https://api-production-6462.up.railway.app/admin/login/> |
+| Comprobación rápida de que la API responde | <https://api-production-6462.up.railway.app/salud/> |
 | **Panel ERP** | ⏳ por publicar (hoy se usa en local contra la API de producción) |
 | **PWA de listas** | GitHub Pages, desde la raíz de este repo |
 | Repositorio | <https://github.com/MatiusProg/Software_ERP> |

@@ -65,7 +65,7 @@ documenta serverless ni watch paths. Se adopta cuando lo haga (§ pendientes).
 | Build → Builder | **Dockerfile**, `/backend/Dockerfile` | la misma imagen que en local y en el CI |
 | Build → Watch Paths | `/backend/**`, `/.dockerignore` | un cambio de docs o del panel no redespliega |
 | Deploy → Pre-deploy | `python manage.py migrate --noinput` | si una migración falla, sigue la versión anterior |
-| Deploy → Healthcheck | `/admin/login/` | no cambia de versión hasta que la nueva responde |
+| Deploy → Healthcheck | `/salud/` | 200 solo si la base responde; exenta de la redirección HTTPS (Railway la llama por HTTP con Host `healthcheck.railway.app`) |
 | Deploy → **Serverless** | activado | se duerme tras 10 min sin tráfico: no paga RAM ociosa |
 | Scale → Región | US East (Virginia), `us-east4-eqdc4a` | junto a Supabase. **Railway crea en Ámsterdam por defecto** |
 | Scale → Memoria | tope de 1 GB | si algo se descontrola, no se come el presupuesto |
@@ -100,7 +100,7 @@ python -c "import secrets;print(secrets.token_urlsafe(50),end='')" \
 
 ```bash
 U=https://api-production-6462.up.railway.app
-curl -s -o /dev/null -w "%{http_code}\n" $U/admin/login/        # 200
+curl -s $U/salud/                                               # {"estado": "ok"}
 curl -sI $U/admin/login/ | grep -i strict-transport             # HSTS presente
 curl -s -o /dev/null -w "%{http_code}\n" http://${U#https://}/  # 301 → https
 ```

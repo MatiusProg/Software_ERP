@@ -89,15 +89,15 @@ export function Cotizaciones() {
             <tbody>
               {datos.map((c) => (
                 <tr key={c.id} className="clic" onClick={() => setAbierta(c)}>
-                  <td>
+                  <td className="t-principal">
                     <strong>{c.numero}</strong>
                   </td>
-                  <td style={{ color: "var(--tenue)" }}>{fecha(c.creado_en)}</td>
-                  <td>{c.cliente_nombre || "—"}</td>
-                  <td>
+                  <td className="t-sec" style={{ color: "var(--tenue)" }}>{fecha(c.creado_en)}</td>
+                  <td className="t-sec">{c.cliente_nombre || "—"}</td>
+                  <td className="t-sec">
                     <ChipEstado estado={c.estado} texto={c.estado_display} />
                   </td>
-                  <td className="num">
+                  <td className="num t-monto">
                     <strong>{dinero(c.total)}</strong>
                   </td>
                 </tr>

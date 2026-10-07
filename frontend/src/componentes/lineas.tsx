@@ -140,7 +140,7 @@ export function EditorLineas({ lineas, setLineas, fiscal, conComprado, refBuscad
       <Autocompletar<Producto>
         refExterna={refBuscador}
         autoFocus
-        placeholder="Buscar producto por nombre, SKU o código… (Enter agrega; texto libre también sirve)"
+        placeholder="Buscar producto o código (Enter agrega)"
         buscar={async (texto) =>
           (await apiProductos.listar({ search: texto, activo: true })).results.slice(0, 8)
         }
@@ -174,104 +174,107 @@ export function EditorLineas({ lineas, setLineas, fiscal, conComprado, refBuscad
 
         {lineas.map((l) => (
           <div className={`linea-pos${bajoMinimo(l) ? " alerta" : ""}`} key={l.clave}>
-            <div>
+            <div className="lp-desc">
               <input
                 className="desc-input"
                 value={l.descripcion}
                 placeholder="Descripción"
+                aria-label="Descripción"
                 onChange={(e) => cambiar(l.clave, { descripcion: e.target.value })}
               />
               <input
-                style={{ marginTop: 4, fontSize: 13 }}
+                className="detalle-input"
                 value={l.detalle}
                 placeholder="Detalle (1 java, 1/4, caja…)"
+                aria-label="Detalle"
                 onChange={(e) => cambiar(l.clave, { detalle: e.target.value })}
               />
             </div>
 
-            {l.modoUnitario ? (
-              <>
-                <input
-                  className="num"
-                  inputMode="decimal"
-                  value={l.cantidad}
-                  title="Cantidad"
-                  onChange={(e) => cambiar(l.clave, { cantidad: e.target.value })}
-                />
-                <input
-                  className="num"
-                  inputMode="decimal"
-                  value={l.precioUnitario}
-                  title="Precio unitario"
-                  onChange={(e) => cambiar(l.clave, { precioUnitario: e.target.value })}
-                />
-              </>
-            ) : (
-              <>
-                <button
-                  className="plano"
-                  title="Cambiar a cantidad × precio unitario"
-                  onClick={() =>
-                    cambiar(l.clave, {
-                      modoUnitario: true,
-                      cantidad: "1",
-                      precioUnitario: l.total || "",
-                    })
-                  }
-                >
-                  × unidad
-                </button>
-                <input
-                  className="num"
-                  inputMode="decimal"
-                  value={l.total}
-                  placeholder="Total"
-                  title="Total de la línea"
-                  onChange={(e) => cambiar(l.clave, { total: e.target.value })}
-                />
-              </>
-            )}
-
-            <div className="num" style={{ fontWeight: 700 }}>
-              {dinero(totalLinea(l))}
-              {bajoMinimo(l) ? (
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--peligro)" }}>
-                  bajo el mín. {dinero(l.minimo)}
-                </div>
-              ) : (
-                fiscal &&
-                Number(l.impuesto) > 0 && (
-                  <div style={{ fontSize: 11, fontWeight: 400, color: "var(--tenue)" }}>
-                    IVA {cantidad(l.impuesto)}% incl.
-                  </div>
-                )
-              )}
-              {l.modoUnitario && (
-                <button
-                  className="plano"
-                  style={{ fontSize: 11, padding: "1px 5px", display: "block", marginLeft: "auto" }}
-                  title="Volver a escribir el total directo"
-                  onClick={() =>
-                    cambiar(l.clave, { modoUnitario: false, total: totalLinea(l).toFixed(2) })
-                  }
-                >
-                  total directo
-                </button>
-              )}
-            </div>
-
-            <div className="fila" style={{ gap: 4 }}>
+            <div className="lp-quitar">
               {conComprado && (
                 <input
                   type="checkbox"
                   checked={!!l.comprado}
                   title="Comprado"
+                  aria-label="Comprado"
                   onChange={(e) => cambiar(l.clave, { comprado: e.target.checked })}
                 />
               )}
-              <button className="plano icono" title="Quitar" onClick={() => quitar(l.clave)}>
+              <button className="plano icono" title="Quitar" aria-label="Quitar línea" onClick={() => quitar(l.clave)}>
                 ✕
               </button>
+            </div>
+
+            <div className="lp-montos">
+              {l.modoUnitario ? (
+                <>
+                  <label>
+                    <span>Cant.</span>
+                    <input
+                      className="num"
+                      inputMode="decimal"
+                      value={l.cantidad}
+                      onChange={(e) => cambiar(l.clave, { cantidad: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    <span>Precio c/u</span>
+                    <input
+                      className="num"
+                      inputMode="decimal"
+                      value={l.precioUnitario}
+                      onChange={(e) => cambiar(l.clave, { precioUnitario: e.target.value })}
+                    />
+                  </label>
+                  <button
+                    className="enlace"
+                    title="Volver a escribir el total directo"
+                    onClick={() =>
+                      cambiar(l.clave, { modoUnitario: false, total: totalLinea(l).toFixed(2) })
+                    }
+                  >
+                    Total directo
+                  </button>
+                </>
+              ) : (
+                <>
+                  <label>
+                    <span>Total</span>
+                    <input
+                      className="num"
+                      inputMode="decimal"
+                      value={l.total}
+                      onChange={(e) => cambiar(l.clave, { total: e.target.value })}
+                    />
+                  </label>
+                  <button
+                    className="enlace"
+                    title="Cambiar a cantidad × precio unitario"
+                    onClick={() =>
+                      cambiar(l.clave, {
+                        modoUnitario: true,
+                        cantidad: "1",
+                        precioUnitario: l.total || "",
+                      })
+                    }
+                  >
+                    Por unidad
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="lp-total num">
+              <strong>{dinero(totalLinea(l))}</strong>
+              {bajoMinimo(l) ? (
+                <small style={{ color: "var(--peligro)", fontWeight: 600 }}>
+                  bajo el mín. {dinero(l.minimo)}
+                </small>
+              ) : (
+                fiscal &&
+                Number(l.impuesto) > 0 && <small>IVA {cantidad(l.impuesto)}% incl.</small>
+              )}
             </div>
           </div>
         ))}

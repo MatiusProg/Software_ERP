@@ -116,19 +116,19 @@ export function Productos() {
                   className={permisos.puedeEditarCatalogo ? "clic" : ""}
                   onClick={() => permisos.puedeEditarCatalogo && setEditando(p)}
                 >
-                  <td style={{ fontFamily: "ui-monospace, monospace", fontSize: 13 }}>{p.sku}</td>
-                  <td>
+                  <td className="t-sec codigo" data-label="Cód.">{p.sku}</td>
+                  <td className="t-principal">
                     <strong>{p.nombre}</strong>
                     {!p.activo && <span className="chip mal" style={{ marginLeft: 6 }}>inactivo</span>}
                     {p.es_servicio && <span className="chip" style={{ marginLeft: 6 }}>servicio</span>}
                   </td>
-                  <td style={{ color: "var(--tenue)" }}>{p.categoria_nombre ?? "—"}</td>
-                  <td className="num">
+                  <td className="t-sec" style={{ color: "var(--tenue)" }}>{p.categoria_nombre ?? "—"}</td>
+                  <td className="num t-monto">
                     <strong>{dinero(p.precio_venta)}</strong>
                   </td>
-                  <td className="num" style={{ color: "var(--tenue)" }}>{dinero(p.precio_venta_minimo)}</td>
-                  <td className="num">{p.es_servicio ? "—" : cantidad(p.stock)}</td>
-                  <td className="num">
+                  <td className="num t-sec" data-label="Mín." style={{ color: "var(--tenue)" }}>{dinero(p.precio_venta_minimo)}</td>
+                  <td className="num t-sec" data-label="Stock">{p.es_servicio ? "—" : cantidad(p.stock)}</td>
+                  <td className="num t-accion">
                     {permisos.puedeBorrar && (
                       <button
                         className="plano peligro"

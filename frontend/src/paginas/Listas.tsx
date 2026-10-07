@@ -88,20 +88,20 @@ export function Listas() {
                 const comprados = l.items.filter((i) => i.comprado).length;
                 return (
                   <tr key={l.id} className="clic" onClick={() => setEditando(l)}>
-                    <td>
+                    <td className="t-principal">
                       <strong>{l.titulo}</strong>
                     </td>
-                    <td style={{ color: "var(--tenue)" }}>{fecha(l.creado_en)}</td>
-                    <td>{l.cliente_nombre || "—"}</td>
-                    <td>
+                    <td className="t-sec" style={{ color: "var(--tenue)" }}>{fecha(l.creado_en)}</td>
+                    <td className="t-sec">{l.cliente_nombre || "—"}</td>
+                    <td className="t-sec">
                       <span className="chip">
                         {comprados}/{l.items.length} comprados
                       </span>
                     </td>
-                    <td className="num">
+                    <td className="num t-monto">
                       <strong>{dinero(l.total)}</strong>
                     </td>
-                    <td className="num">
+                    <td className="num t-accion">
                       {permisos.puedeBorrar && (
                         <button
                           className="plano peligro"

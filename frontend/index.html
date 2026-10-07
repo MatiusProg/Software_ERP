@@ -2,18 +2,25 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <title>ERP · Panel</title>
+    <link rel="icon" type="image/svg+xml" href="/marca/kinemart-k.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#16241D" />
+    <title>Kinemart</title>
     <script>
-      // Se aplica el tema ANTES de pintar para que no haya destello blanco al
-      // entrar en modo oscuro. La preferencia guardada gana sobre la del sistema.
+      // El modo se aplica ANTES de pintar para que no haya destello al entrar.
+      // Tres modos: noche (por defecto), claro y tecno. Una preferencia vieja
+      // ("erp-tema": oscuro/claro) se traduce una vez y se borra.
       (function () {
-        var guardado = localStorage.getItem("erp-tema");
-        var oscuroSistema = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.dataset.tema =
-          guardado || (oscuroSistema ? "oscuro" : "claro");
+        var guardado = localStorage.getItem("kinemart-tema");
+        var viejo = localStorage.getItem("erp-tema");
+        if (!guardado && viejo) {
+          guardado = viejo === "claro" ? "claro" : "noche";
+          localStorage.setItem("kinemart-tema", guardado);
+          localStorage.removeItem("erp-tema");
+        }
+        var tema = guardado === "claro" || guardado === "tecno" ? guardado : "noche";
+        document.documentElement.dataset.tema = tema;
       })();
     </script>
   </head>

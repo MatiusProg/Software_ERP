@@ -1,111 +1,116 @@
-# Despliegue — Supabase (base de datos) + Railway (backend)
+# Despliegue: Supabase (base de datos) + Railway (API)
 
-Cierre de la Fase 3. El código ya está listo para producción: solo faltan las
-cuentas y pegar las variables de entorno.
-
-Reparto de piezas:
+> **Estado al 2026-10-06: desplegado.**
+> API: <https://api-production-6462.up.railway.app>.
+> Las decisiones de costo y seguridad que explican esta configuración están en
+> [PLAN.md](PLAN.md), decisiones 11 y 12.
 
 | Pieza | Dónde vive | Cómo se publica |
 |---|---|---|
-| Base de datos | **Supabase** (Postgres administrado) | se crea el proyecto y se copia la cadena de conexión |
-| API + admin + **notas por QR** | **Railway** | se conecta el repo de GitHub |
-| Panel ERP (React) | Railway estático, Vercel o Netlify | `npm run build` → carpeta `dist/` |
-| PWA de listas | GitHub Pages (como hoy) | se sube el repo |
+| Base de datos | **Supabase**: proyecto `kinemart`, org *ArmonIA*, `us-east-1` | migraciones automáticas en cada despliegue |
+| API + admin + **notas por QR** | **Railway**: proyecto `sistema-erp`, servicio `api`, US East | cada push a `main` que toque `backend/` |
+| Panel ERP (React) | por definir (ver §3) | `npm run build` → `dist/` |
+| PWA de listas | GitHub Pages | push a `main` |
 
-> El QR de la nota apunta al backend (`/nota/<token>/`), así que **Railway es
-> quien sirve las notas al cliente final**. Por eso el dominio de Railway tiene
-> que ser el definitivo antes de emitir ventas reales: los QR ya impresos siguen
-> apuntando a ese dominio.
-
----
-
-## 1. Supabase — la base de datos
-
-1. Crear un proyecto en [supabase.com](https://supabase.com). Guardar la
-   contraseña de la base.
-
-   **La región se elige para que coincida con la de Railway, no con Bolivia.**
-   Railway no tiene servidores en Sudamérica, así que la app vivirá en EE.UU.;
-   dejar la base en São Paulo haría que cada consulta cruzara el continente. Una
-   pantalla del panel dispara decenas de consultas, así que eso se multiplica:
-   ~120 ms por consulta contra ~1 ms si están juntas.
-
-   Mirar qué ciudad dice la UI de Railway (US East suele ser *Virginia*) y elegir
-   esa misma en Supabase — *East US (North Virginia)* u *Ohio* según corresponda.
-   Acertar la costa ya resuelve casi todo; acertar la ciudad ahorra otros ~10 ms.
-2. **Project Settings → Database → Connection string → URI**. Copiar la cadena:
-
-   ```
-   postgresql://postgres.[REF]:[CLAVE]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
-   ```
-
-   Usar la del **pooler** (puerto 6543): Railway abre y cierra conexiones y el
-   pooler evita quedarse sin cupo.
-
-   El pooler es PgBouncer en **modo transacción**, que no admite sentencias
-   preparadas ni cursores del lado del servidor. `settings.py` detecta el puerto
-   6543 y los desactiva solo. Si algún día se usa otro pooler en un puerto
-   distinto, poner `DB_POOLER=True` para forzar el mismo ajuste. Saltarse esto no
-   rompe el arranque: falla más tarde, con `prepared statement "..." already
-   exists`, cuando una consulta ya se repitió varias veces.
-3. Probar en local antes de desplegar (con el venv activo, dentro de `backend/`):
-
-   ```bash
-   DATABASE_URL="postgresql://..." python manage.py migrate
-   DATABASE_URL="postgresql://..." python manage.py datos_demo
-   ```
-
-   Si `migrate` termina sin errores, la conexión está bien.
+> El QR de la nota apunta a la API (`/nota/<token>/`), así que **Railway es
+> quien sirve las notas al cliente final**. Antes de emitir ventas reales hay que
+> fijar el dominio definitivo: los QR ya impresos siguen apuntando al dominio con
+> el que se emitieron.
 
 ---
 
-## 2. Railway — el backend
+## 1. Supabase: la base de datos
 
-1. Crear cuenta en [railway.app](https://railway.app) → **New Project → Deploy
-   from GitHub repo** → elegir este repositorio.
-2. Railway lee `railway.json` de la raíz: instala `backend/requirements.txt`,
-   corre `collectstatic`, aplica las migraciones y levanta gunicorn.
-3. **Variables** (Settings → Variables):
+**Región:** *East US (North Virginia)*, la misma zona que el "US East" de
+Railway (unos 1–2 ms por consulta). Ohio agrega unos 10–15 ms, y una pantalla
+hace decenas de consultas.
 
-   | Variable | Valor |
-   |---|---|
-   | `DATABASE_URL` | la cadena del pooler de Supabase |
-   | `DJANGO_SECRET_KEY` | una clave nueva de 50+ caracteres (ver abajo) |
-   | `DJANGO_DEBUG` | `False` |
-   | `DJANGO_ALLOWED_HOSTS` | tu dominio de Railway |
-   | `CORS_ALLOWED_ORIGINS` | URLs del panel y de la PWA, separadas por coma |
-   | `CSRF_TRUSTED_ORIGINS` | las mismas, con `https://` |
-   | `DJANGO_TIME_ZONE` | `America/La_Paz` |
+**Conexión:** botón **Connect → Direct → Session pooler** (puerto **5432**):
 
-   `RAILWAY_PUBLIC_DOMAIN` la pone Railway sola y el `settings.py` ya la añade a
-   `ALLOWED_HOSTS` y a `CSRF_TRUSTED_ORIGINS`.
+```
+postgresql://postgres.<REF>:<CLAVE>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+```
 
-   Clave nueva:
+- **No usar "Direct connection".** Es solo IPv6.
+- **No usar "Transaction pooler" (6543).** Rompe las sentencias preparadas de
+  Django. `settings.py` igual detecta el 6543 y las desactiva, pero no hace falta
+  pasar por eso.
+- La cadena completa vive en `backend/.env` como `SUPABASE_DB_URL`, que el
+  código no lee, y en Railway como `DATABASE_URL`.
 
-   ```bash
-   python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"
-   ```
+**Data API apagada** (*Integrations → Data API*). Sin RLS, expondría las tablas
+por REST. **No volver a prenderla sin RLS** (PLAN.md, decisión 12).
 
-4. **Settings → Networking → Generate Domain** para obtener la URL pública.
-5. Crear el primer usuario real:
+**Probar contra Supabase desde tu PC**, con la misma imagen que corre en
+Railway:
 
-   ```bash
-   railway run python backend/manage.py createsuperuser
-   ```
+```bash
+export DATABASE_URL="$(grep '^SUPABASE_DB_URL=' backend/.env | cut -d= -f2-)"
+docker compose run --rm --no-deps -e DATABASE_URL api python manage.py migrate
+```
 
-   O registrar el negocio desde el panel (botón «Registrar un negocio nuevo»).
+---
+
+## 2. Railway: la API
+
+La configuración está versionada en [`railway.json`](../railway.json):
+
+| Qué | Valor | Por qué |
+|---|---|---|
+| Builder | `DOCKERFILE` → `backend/Dockerfile` | es la misma imagen que corre en local y en el CI |
+| `watchPatterns` | `backend/**`, `railway.json`, `.dockerignore` | un cambio en docs o en el panel no redespliega |
+| `preDeployCommand` | `migrate` | si una migración falla, sigue sirviendo la versión anterior |
+| `healthcheckPath` | `/admin/login/` | no cambia de versión hasta que la nueva responde |
+| `sleepApplication` | `true` | se duerme tras 10 min sin tráfico: no paga RAM ociosa |
+
+Configurado en el panel. Hasta migrar a `.railway/railway.ts` no se puede
+versionar:
+
+- **Región:** US East (Virginia), `us-east4-eqdc4a`. **Railway crea los
+  servicios en Ámsterdam por defecto**, así que hay que revisarlo en cada
+  servicio nuevo.
+- **Tope de memoria:** 1 GB por réplica.
+- **Límite duro de gasto del workspace:** $10, que es el mínimo. Aviso por
+  correo en $5.
+
+> ⚠️ **Railway deja de leer `railway.json` el 2026-12-01.** Antes de esa fecha:
+> `railway config migrate`, que lo pasa a `.railway/railway.ts`.
+
+### Variables
+
+| Variable | Valor |
+|---|---|
+| `DATABASE_URL` | Session pooler de Supabase (cargada por stdin, nunca en un comando) |
+| `DJANGO_SECRET_KEY` | aleatoria, **distinta a la local**. Solo existe en Railway |
+| `DJANGO_DEBUG` | `False` |
+| `DJANGO_ALLOWED_HOSTS` | `localhost` (el dominio de Railway lo agrega `settings.py` desde `RAILWAY_PUBLIC_DOMAIN`) |
+| `CORS_ALLOWED_ORIGINS` | `https://matiusprog.github.io` + `localhost:5173` (panel local contra prod) |
+| `CSRF_TRUSTED_ORIGINS` | `https://matiusprog.github.io` |
+| `DJANGO_TIME_ZONE` | `America/La_Paz` |
+| `WEB_CONCURRENCY` | `2` (workers de gunicorn) |
+
+Para cargar un secreto sin que quede en el historial de la terminal:
+
+```bash
+python -c "import secrets;print(secrets.token_urlsafe(50),end='')" \
+  | railway variable set DJANGO_SECRET_KEY --stdin --service api
+```
 
 ### Comprobar que quedó bien
 
 ```bash
-curl https://TU-APP.railway.app/api/tienda/tienda-demo/productos/   # catálogo público
-curl -X POST https://TU-APP.railway.app/api/auth/token/ \
-  -H "Content-Type: application/json" \
-  -d '{"email":"demo@erp.test","password":"clave12345"}'
+U=https://api-production-6462.up.railway.app
+curl -s -o /dev/null -w "%{http_code}\n" $U/admin/login/        # 200
+curl -sI $U/admin/login/ | grep -i strict-transport             # HSTS presente
+curl -s -o /dev/null -w "%{http_code}\n" http://${U#https://}/  # 301 → https
 ```
 
-Luego emitir una venta desde el panel y **escanear el QR con el celular**: debe
-abrir `https://TU-APP.railway.app/nota/<token>/` y dejar guardar la imagen.
+La prueba que importa: **emitir una venta y escanear el QR con un celular de
+verdad**. Tiene que abrir la nota y dejar guardarla en la galería.
+
+En producción hay una cuenta de prueba (`PROD_PRUEBA_*` en `backend/.env`) con
+la organización **"PRUEBA DESPLIEGUE (borrar)"**. Hay que borrarla antes de
+cargar datos reales.
 
 ---
 
@@ -123,7 +128,7 @@ agregar esa URL a `CORS_ALLOWED_ORIGINS` y `CSRF_TRUSTED_ORIGINS` en Railway.
 
 Sigue en GitHub Pages. Al conectarse al negocio, en el modal se escribe la URL de
 Railway. Hay que agregar el origen de Pages
-(`https://usuario.github.io`) a `CORS_ALLOWED_ORIGINS`.
+(`https://matiusprog.github.io`, ya agregado) a `CORS_ALLOWED_ORIGINS`.
 
 ---
 
@@ -138,8 +143,8 @@ Railway. Hay que agregar el origen de Pages
 - **Migraciones**: corren solas en cada despliegue (`preDeployCommand`). Si una
   falla, el despliegue se cancela y sigue sirviendo la versión anterior — es a
   propósito, para no servir con la base a medias.
-- **`datos_demo` es idempotente**: se puede correr en producción para tener con
-  qué probar, y borrar esos registros después desde el admin.
+- **No correr `datos_demo` en producción**: crea usuarios con la contraseña
+  `clave12345`, que está publicada en este repo público.
 - **El QR depende del dominio**: si más adelante se usa un dominio propio, hay
   que fijar `NOTA_PUBLICA_BASE_URL` con él para que las notas nuevas apunten ahí.
   Las ya emitidas seguirán llevando al dominio viejo, así que conviene mantener

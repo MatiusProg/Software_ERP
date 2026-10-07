@@ -13,15 +13,16 @@
 
 FROM python:3.13-slim AS deps
 
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
 RUN python -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 
+# requirements.txt se copia solo, antes que el código: mientras no cambie, Docker
+# reutiliza esta capa y no reinstala nada. (Sin `--mount=type=cache`: el builder
+# de Railway lo rechaza si el id no lleva el ID del servicio.)
 COPY backend/requirements.txt /tmp/requirements.txt
-# La caché de pip sobrevive entre builds (no entra en la imagen): cambiar una
-# línea de requirements no vuelve a descargar todo.
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
 
 
 FROM python:3.13-slim AS runtime

@@ -9,7 +9,7 @@
 |---|---|---|
 | Base de datos | **Supabase**: proyecto `kinemart`, org *ArmonIA*, `us-east-1` | migraciones automáticas en cada despliegue |
 | API + admin + **notas por QR** | **Railway**: proyecto `sistema-erp`, servicio `api`, US East | cada push a `main` que toque `backend/` |
-| Panel ERP (React) | por definir (ver §3) | `npm run build` → `dist/` |
+| Panel ERP (React) | **Cloudflare Workers** (archivos estáticos): `kinemart` | cada push a `main` (build en Cloudflare) |
 | PWA de listas | GitHub Pages | push a `main` |
 
 > El QR de la nota apunta a la API (`/nota/<token>/`), así que **Railway es
@@ -87,8 +87,8 @@ algún día molesta, apagar Serverless cuesta unos $2–2.5/mes de RAM (2 worker
 | `DJANGO_SECRET_KEY` | aleatoria, **distinta a la local**. Solo existe en Railway |
 | `DJANGO_DEBUG` | `False` |
 | `DJANGO_ALLOWED_HOSTS` | `localhost` (el dominio de Railway lo agrega `settings.py` desde `RAILWAY_PUBLIC_DOMAIN`) |
-| `CORS_ALLOWED_ORIGINS` | `https://matiusprog.github.io` + `localhost:5173` (panel local contra prod) |
-| `CSRF_TRUSTED_ORIGINS` | `https://matiusprog.github.io` |
+| `CORS_ALLOWED_ORIGINS` | `https://matiusprog.github.io`, `https://kinemart.luismateo-hurtado.workers.dev` + `localhost:5173` (panel local contra prod) |
+| `CSRF_TRUSTED_ORIGINS` | `https://matiusprog.github.io`, `https://kinemart.luismateo-hurtado.workers.dev` |
 | `DJANGO_TIME_ZONE` | `America/La_Paz` |
 | `WEB_CONCURRENCY` | `2` (workers de gunicorn) |
 | `DB_CONN_MAX_AGE` | `0` (ver serverless, arriba) |
@@ -118,15 +118,27 @@ cargar datos reales.
 
 ---
 
-## 3. Panel ERP (React)
+## 3. Panel ERP (React): Cloudflare
 
-```bash
-cd frontend
-VITE_API_URL=https://TU-APP.railway.app npm run build
-```
+**URL:** <https://kinemart.luismateo-hurtado.workers.dev> (provisional, hasta
+tener el dominio de ArmonIA: `kinemart.<dominio>`).
 
-Publicar `frontend/dist/` donde sea (Railway static, Vercel, Netlify). Después,
-agregar esa URL a `CORS_ALLOWED_ORIGINS` y `CSRF_TRUSTED_ORIGINS` en Railway.
+- Cuenta de Cloudflare de Mateo. Worker `kinemart` conectado al repo por la app
+  "Cloudflare Workers and Pages" de GitHub, que tiene acceso solo a los repos
+  elegidos: `barberia-torrez` y `Software_ERP`.
+- **Configuración en el repo:** [`frontend/wrangler.jsonc`](../frontend/wrangler.jsonc).
+  Solo archivos estáticos, con `not_found_handling: "single-page-application"`
+  para que recargar en `/ventas` no dé 404.
+- **Configuración en el panel de Cloudflare:** ruta `/frontend`, build
+  `npm ci && npm run build`, deploy `npx wrangler deploy`.
+- **La URL de la API** sale de [`frontend/.env.production`](../frontend/.env.production)
+  (`VITE_API_URL`). No es secreta, porque termina dentro del JS publicado.
+- **Por qué Cloudflare y no un segundo servicio en Railway:** es gratis, sirve
+  desde la CDN más cercana y nunca se duerme. La API sí se duerme; el panel
+  aparece al instante.
+- **Cada origen nuevo del panel** (otro dominio, una preview) va en
+  `CORS_ALLOWED_ORIGINS` y `CSRF_TRUSTED_ORIGINS` de Railway. Si no, el login
+  falla con un error de red que no dice "CORS".
 
 ## 4. PWA de listas
 

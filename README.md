@@ -20,7 +20,7 @@ universidad: tiene un cliente real con dos sucursales esperando usarlo.
 |---|---|
 | **API + notas QR** | <https://api-production-6462.up.railway.app> — dominio provisional de Railway |
 | Comprobación rápida de que la API responde | <https://api-production-6462.up.railway.app/salud/> |
-| **Panel ERP** | ⏳ por publicar (hoy se usa en local contra la API de producción) |
+| **Panel ERP** | <https://kinemart.luismateo-hurtado.workers.dev> — Cloudflare, dominio provisional |
 | **PWA de listas** | GitHub Pages, desde la raíz de este repo |
 | Repositorio | <https://github.com/MatiusProg/Software_ERP> |
 

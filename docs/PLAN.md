@@ -87,6 +87,14 @@ Doble público:
        migraciones.
      - Antes de mudar la API, subir el límite duro, para que Railway no la
        apague en plena venta.
+     - **Con el primer cliente que paga, apagar Serverless.** Despertar cuesta
+       ~1.3 s extra en la primera petición tras 10 min sin uso (medido el
+       2026-10-06). Siempre prendida cuesta unos $2–3 al mes, y la primera
+       venta ya lo cubre.
+   - **Dominio:** cuando esté el de ArmonIA, el panel va en `kinemart.<dominio>`
+     (Cloudflare Pages) y la API en `api.kinemart.<dominio>` (dominio propio en
+     Railway), con el DNS en Cloudflare. **Las notas reales tienen que salir ya
+     con el dominio definitivo**, porque el QR impreso apunta a él para siempre.
 12. **Data API de Supabase apagada; RLS pendiente** (2026-10-06).
    - **El problema:** Supabase publica por REST (PostgREST, con la clave *anon*,
      que es pública) todas las tablas del esquema `public`. Django crea ahí sus

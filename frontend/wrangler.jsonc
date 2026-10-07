@@ -1,0 +1,19 @@
+// Despliegue del panel en Cloudflare (Workers con archivos estáticos).
+//
+// Cloudflare construye desde frontend/ con `npm run build` y publica dist/ con
+// `npx wrangler deploy`. No hay código de servidor: solo archivos estáticos
+// servidos desde la CDN, así que nunca se duerme y no cuesta.
+//
+// Esta configuración vive en el repo a propósito: la de Railway se perdió por
+// estar solo en un archivo que la plataforma dejó de leer (docs/DESPLIEGUE.md).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kinemart",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // El panel usa BrowserRouter: /ventas, /productos... no existen como
+    // archivos. Sin esto, recargar en una de esas rutas daría 404.
+    "not_found_handling": "single-page-application"
+  }
+}

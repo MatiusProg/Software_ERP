@@ -1,0 +1,69 @@
+# CI: en cada push y en cada pull request contra main.
+#
+# backend  → construye la imagen de backend/Dockerfile (la misma que despliega
+#            Railway) y corre las pruebas de Django contra PostgreSQL 17, con el
+#            mismo compose.yml que se usa en local.
+# frontend → oxlint + tsc + vite build del panel.
+#
+# Si alguno falla, el commit queda marcado con ❌ en GitHub. Railway despliega
+# igual cada push a main (no espera al CI); ver docs/PLAN.md si eso cambia.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Un push nuevo a la misma rama cancela la corrida anterior: no gasta minutos
+# probando un commit que ya quedó viejo.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Django + Postgres 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # El compose lee backend/.env si existe; en CI no hay, y no hace falta:
+      # todas las variables que usa la API vienen del propio compose.yml.
+      - name: Construir la imagen y levantar la base
+        run: docker compose up -d --build --wait db
+
+      - name: Pruebas
+        run: docker compose run --rm api python manage.py test --noinput
+
+      - name: Chequeo de despliegue (DEBUG=False)
+        # Lo que Django avisa en modo producción: cookies, HSTS, SECRET_KEY...
+        run: >
+          docker compose run --rm
+          -e DJANGO_DEBUG=False
+          -e DJANGO_SECRET_KEY=ci-${{ github.sha }}-clave-larga-solo-para-el-chequeo
+          api python manage.py check --deploy --fail-level ERROR
+
+      - name: Migraciones al día con los modelos
+        # Falla si alguien cambió un modelo y olvidó el makemigrations.
+        run: docker compose run --rm api python manage.py makemigrations --check --dry-run
+
+  frontend:
+    name: Panel (oxlint + tsc + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

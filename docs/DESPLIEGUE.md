@@ -75,6 +75,10 @@ documenta serverless ni watch paths. Se adopta cuando lo haga (§ pendientes).
 `DB_CONN_MAX_AGE=0`. Una conexión persistente a Supabase cuenta como tráfico
 saliente, y con ella abierta el servicio no se dormía (medido el 2026-10-06).
 
+**Cuánto cuesta despertarlo** (medido el 2026-10-06, desde Bolivia): la primera
+petición tras 10+ min sin uso tarda **~1.85 s**; las siguientes, ~0.5 s. Si
+algún día molesta, apagar Serverless cuesta unos $2–2.5/mes de RAM (2 workers).
+
 ### Variables
 
 | Variable | Valor |
@@ -149,3 +153,13 @@ Railway. Hay que agregar el origen de Pages
   que fijar `NOTA_PUBLICA_BASE_URL` con él para que las notas nuevas apunten ahí.
   Las ya emitidas seguirán llevando al dominio viejo, así que conviene mantener
   una redirección.
+- **Un despliegue en SKIPPED no se retoma solo.** Con "Wait for CI", si el CI
+  de un commit se cancela o falla, Railway lo marca SKIPPED. Aunque después se
+  relance el CI y pase, hay que desplegar a mano:
+  `railway redeploy --service api --from-source -y` (toma el último commit de
+  `main`). `railway redeploy` sin `--from-source` repite el despliegue viejo.
+- **"1/1 replicas never became healthy"** con el build en verde = el
+  healthcheck no recibe 200. Las dos causas que ya pasaron: el Host
+  `healthcheck.railway.app` fuera de `ALLOWED_HOSTS` (400) y la redirección a
+  HTTPS (301). `/salud/` resuelve las dos.
+- **Railway crea los servicios nuevos en Ámsterdam.** Revisar Scale → Región.

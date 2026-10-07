@@ -16,11 +16,13 @@ on:
   pull_request:
     branches: [main]
 
-# Un push nuevo a la misma rama cancela la corrida anterior: no gasta minutos
-# probando un commit que ya quedó viejo.
+# En un pull request, un push nuevo cancela la corrida anterior (ese commit ya
+# quedó viejo). En main NO: Railway tiene "Wait for CI" y despliega cada commit
+# solo si su CI pasó; cancelarlo dejaba el despliegue esperando para siempre
+# (pasó el 2026-10-06 con un push de docs justo detrás de uno del backend).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:

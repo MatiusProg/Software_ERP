@@ -130,7 +130,12 @@ if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
-            conn_max_age=600,           # reutiliza conexiones entre peticiones
+            # Segundos que una conexión sobrevive entre peticiones. En Railway va
+            # en 0: una conexión abierta a Supabase cuenta como tráfico saliente
+            # y el modo serverless nunca duerme el servicio (medido 2026-10-06).
+            # Abrir una nueva por el Session pooler, en la misma región, cuesta
+            # unos milisegundos.
+            conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "600")),
             ssl_require=env_bool("DB_SSL_REQUIRE", True),
         )
     }

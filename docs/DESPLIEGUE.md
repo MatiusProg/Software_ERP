@@ -53,28 +53,27 @@ docker compose run --rm --no-deps -e DATABASE_URL api python manage.py migrate
 
 ## 2. Railway: la API
 
-La configuración está versionada en [`railway.json`](../railway.json):
+**La configuración vive en el panel de Railway**, no en el repo. Desde el
+2026-08-28 los servicios nuevos ya no pueden usar `railway.json` (Config as
+Code); este servicio lo ignoraba y por eso se borró. El reemplazo es
+Infrastructure as Code (`.railway/railway.ts`), pero hoy su referencia no
+documenta serverless ni watch paths. Se adopta cuando lo haga (§ pendientes).
 
-| Qué | Valor | Por qué |
+| Ajuste (Settings) | Valor | Por qué |
 |---|---|---|
-| Builder | `DOCKERFILE` → `backend/Dockerfile` | es la misma imagen que corre en local y en el CI |
-| `watchPatterns` | `backend/**`, `railway.json`, `.dockerignore` | un cambio en docs o en el panel no redespliega |
-| `preDeployCommand` | `migrate` | si una migración falla, sigue sirviendo la versión anterior |
-| `healthcheckPath` | `/admin/login/` | no cambia de versión hasta que la nueva responde |
-| `sleepApplication` | `true` | se duerme tras 10 min sin tráfico: no paga RAM ociosa |
+| Source → **Wait for CI** | activado | solo despliega si GitHub Actions pasó en verde |
+| Build → Builder | **Dockerfile**, `/backend/Dockerfile` | la misma imagen que en local y en el CI |
+| Build → Watch Paths | `/backend/**`, `/.dockerignore` | un cambio de docs o del panel no redespliega |
+| Deploy → Pre-deploy | `python manage.py migrate --noinput` | si una migración falla, sigue la versión anterior |
+| Deploy → Healthcheck | `/admin/login/` | no cambia de versión hasta que la nueva responde |
+| Deploy → **Serverless** | activado | se duerme tras 10 min sin tráfico: no paga RAM ociosa |
+| Scale → Región | US East (Virginia), `us-east4-eqdc4a` | junto a Supabase. **Railway crea en Ámsterdam por defecto** |
+| Scale → Memoria | tope de 1 GB | si algo se descontrola, no se come el presupuesto |
+| Workspace → Usage | límite duro $10 (mínimo posible), aviso en $5 | Railway apaga en vez de cobrar |
 
-Configurado en el panel. Hasta migrar a `.railway/railway.ts` no se puede
-versionar:
-
-- **Región:** US East (Virginia), `us-east4-eqdc4a`. **Railway crea los
-  servicios en Ámsterdam por defecto**, así que hay que revisarlo en cada
-  servicio nuevo.
-- **Tope de memoria:** 1 GB por réplica.
-- **Límite duro de gasto del workspace:** $10, que es el mínimo. Aviso por
-  correo en $5.
-
-> ⚠️ **Railway deja de leer `railway.json` el 2026-12-01.** Antes de esa fecha:
-> `railway config migrate`, que lo pasa a `.railway/railway.ts`.
+**Serverless y la base de datos:** para que el servicio pueda dormirse,
+`DB_CONN_MAX_AGE=0`. Una conexión persistente a Supabase cuenta como tráfico
+saliente, y con ella abierta el servicio no se dormía (medido el 2026-10-06).
 
 ### Variables
 
@@ -88,6 +87,7 @@ versionar:
 | `CSRF_TRUSTED_ORIGINS` | `https://matiusprog.github.io` |
 | `DJANGO_TIME_ZONE` | `America/La_Paz` |
 | `WEB_CONCURRENCY` | `2` (workers de gunicorn) |
+| `DB_CONN_MAX_AGE` | `0` (ver serverless, arriba) |
 
 Para cargar un secreto sin que quede en el historial de la terminal:
 
@@ -137,7 +137,7 @@ Railway. Hay que agregar el origen de Pages
 - **`DEBUG=False` activa el endurecimiento** (redirección a HTTPS, HSTS, cookies
   seguras). Si algo deja de responder tras desplegar, revisar primero
   `ALLOWED_HOSTS`: un host que falta devuelve 400 sin explicación.
-- **Build**: Railway construye `backend/Dockerfile` (ver `railway.json`), la
+- **Build**: Railway construye `backend/Dockerfile` (configurado en el panel), la
   misma imagen que se prueba en local con `docker compose`. Lo que funciona en tu
   PC funciona allá.
 - **Migraciones**: corren solas en cada despliegue (`preDeployCommand`). Si una

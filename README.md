@@ -24,7 +24,7 @@ universidad: tiene un cliente real con dos sucursales esperando usarlo.
 | **PWA de listas** | GitHub Pages, desde la raíz de este repo |
 | Repositorio | <https://github.com/MatiusProg/Software_ERP> |
 
-La API corre en **Railway** construida desde [`backend/Dockerfile`](backend/Dockerfile)
+La API corre en **Railway**, construida desde [`backend/Dockerfile`](backend/Dockerfile)
 —la misma imagen que levanta `docker compose` en local— y la base de datos es
 **Supabase**. El paso a paso, con las variables y las trampas conocidas, está en
 [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
@@ -194,7 +194,6 @@ index.html, service-worker.js, manifest.json
                         PWA de listas (en la raíz porque la publica GitHub Pages)
 docs/                   plan vivo, despliegue y traspasos entre sesiones
 compose.yml             entorno local: PostgreSQL 17 + API
-railway.json            cómo construye y despliega Railway
 ```
 
 ### Dónde mirar antes de escribir código

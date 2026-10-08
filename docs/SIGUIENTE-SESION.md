@@ -2,7 +2,7 @@
 
 > Actualizado el **2026-10-06**. El producto ahora se llama **Kinemart**
 > (*Kinemart by ArmonIA*). El plan general de negocio está en
-> `D:\TRABAJO\ARMONIA-PLAN.md`.
+> `D:\TRABAJO\ArmonIA\ARMONIA-PLAN.md`.
 
 ---
 

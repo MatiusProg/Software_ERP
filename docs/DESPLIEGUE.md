@@ -10,7 +10,7 @@
 | Base de datos | **Supabase**: proyecto `kinemart`, org *ArmonIA*, `us-east-1` | migraciones automáticas en cada despliegue |
 | API + admin + **notas por QR** | **Railway**: proyecto `sistema-erp`, servicio `api`, US East | cada push a `main` que toque `backend/` |
 | Panel ERP (React) | **Cloudflare Workers** (archivos estáticos): `kinemart` | cada push a `main` (build en Cloudflare) |
-| PWA de listas | GitHub Pages | push a `main` |
+| PWA de listas (`listas/`) | GitHub Pages | push a `main` que toque `listas/` |
 
 > El QR de la nota apunta a la API (`/nota/<token>/`), así que **Railway es
 > quien sirve las notas al cliente final**. Antes de emitir ventas reales hay que
@@ -142,7 +142,16 @@ tener el dominio de ArmonIA: `kinemart.<dominio>`).
 
 ## 4. PWA de listas
 
-Sigue en GitHub Pages. Al conectarse al negocio, en el modal se escribe la URL de
+Vive en `listas/` y la publica GitHub Pages con el workflow
+`pages-listas.yml` (Settings → Pages → Source: **GitHub Actions**). Hasta el
+2026-10-08 Pages publicaba la raíz del repo; se movió a su carpeta sin cambiar
+la URL (<https://matiusprog.github.io/Software_ERP/>).
+
+**No cambiarle la URL nunca:** las listas viven en el `localStorage` de ese
+origen y la app está instalada en celulares. Con otra URL, la gente abriría
+la app vacía (salvo que antes exporte su respaldo JSON desde el menú).
+
+Al conectarse al negocio, en el modal se escribe la URL de
 Railway. Hay que agregar el origen de Pages
 (`https://matiusprog.github.io`, ya agregado) a `CORS_ALLOWED_ORIGINS`.
 

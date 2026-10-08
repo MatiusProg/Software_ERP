@@ -1,0 +1,39 @@
+# Publica la PWA de listas (carpeta listas/) en GitHub Pages.
+#
+# La URL no cambia: https://matiusprog.github.io/Software_ERP/. Importa que no
+# cambie, porque las listas viven en el localStorage de ese origen y la app ya
+# está instalada en celulares: con otra URL, la gente perdería sus listas.
+#
+# Antes Pages publicaba la raíz del repo ("deploy from branch"); ahora publica
+# solo listas/ (Settings → Pages → Source: GitHub Actions).
+name: Pages (listas)
+
+on:
+  push:
+    branches: [main]
+    paths: ["listas/**", ".github/workflows/pages-listas.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: listas
+      - id: despliegue
+        uses: actions/deploy-pages@v4

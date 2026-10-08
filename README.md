@@ -21,7 +21,7 @@ universidad: tiene un cliente real con dos sucursales esperando usarlo.
 | **API + notas QR** | <https://api-production-6462.up.railway.app> — dominio provisional de Railway |
 | Comprobación rápida de que la API responde | <https://api-production-6462.up.railway.app/salud/> |
 | **Panel ERP** | <https://kinemart.luismateo-hurtado.workers.dev> — Cloudflare, dominio provisional |
-| **PWA de listas** | GitHub Pages, desde la raíz de este repo |
+| **PWA de listas** | <https://matiusprog.github.io/Software_ERP/> — GitHub Pages, carpeta [`listas/`](listas/) |
 | Repositorio | <https://github.com/MatiusProg/Software_ERP> |
 
 La API corre en **Railway**, construida desde [`backend/Dockerfile`](backend/Dockerfile)
@@ -190,8 +190,8 @@ frontend/               panel ERP — React + TypeScript (Vite)
   src/api/              el contrato con el backend (axios, tipos, recursos)
   src/auth/             sesión, organización activa, rol y permisos
   src/paginas/          una por sección del menú
-index.html, service-worker.js, manifest.json
-                        PWA de listas (en la raíz porque la publica GitHub Pages)
+listas/                 PWA de listas: HTML + JS sin framework, sin login
+                        (la publica GitHub Pages con .github/workflows/pages-listas.yml)
 docs/                   plan vivo, despliegue y traspasos entre sesiones
 compose.yml             entorno local: PostgreSQL 17 + API
 ```

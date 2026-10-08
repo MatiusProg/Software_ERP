@@ -87,12 +87,12 @@ export function Clientes() {
             <tbody>
               {datos.map((t) => (
                 <tr key={t.id} className="clic" onClick={() => setEditando(t)}>
-                  <td>
+                  <td className="t-principal">
                     <strong>{t.nombre}</strong>
                   </td>
-                  <td style={{ color: "var(--tenue)" }}>{t.nit_ci || "—"}</td>
-                  <td>{telefonoDe(t) || "—"}</td>
-                  <td>
+                  <td className="t-sec" data-label="NIT/CI" style={{ color: "var(--tenue)" }}>{t.nit_ci || "—"}</td>
+                  <td className="t-sec" data-label="Tel.">{telefonoDe(t) || "—"}</td>
+                  <td className="t-sec">
                     {t.es_cliente && <span className="chip acento">cliente</span>}{" "}
                     {t.es_proveedor && <span className="chip">proveedor</span>}{" "}
                     {t.es_transportadora && <span className="chip">transporte</span>}

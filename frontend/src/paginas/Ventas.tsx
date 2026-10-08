@@ -92,11 +92,11 @@ export function Ventas() {
             <tbody>
               {datos.map((v) => (
                 <tr key={v.id} className="clic" onClick={() => setAbierta(v)}>
-                  <td>
+                  <td className="t-principal">
                     <strong>{v.numero}</strong>
                   </td>
-                  <td style={{ color: "var(--tenue)" }}>{fecha(v.creado_en)}</td>
-                  <td>
+                  <td className="t-sec" style={{ color: "var(--tenue)" }}>{fecha(v.creado_en)}</td>
+                  <td className="t-sec">
                     {v.cliente_nombre || "—"}
                     {v.bajo_minimo && (
                       <span className="chip mal" style={{ marginLeft: 6 }} title="Se autorizó vender por debajo del precio mínimo">
@@ -104,17 +104,17 @@ export function Ventas() {
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td className="t-sec">
                     {v.estado === "anulada" ? (
                       <ChipEstado estado="anulada" texto="Anulada" />
                     ) : (
                       <ChipEstado estado={v.estado_pago} texto={v.estado_pago_display} />
                     )}
                   </td>
-                  <td className="num">
+                  <td className="num t-monto">
                     <strong>{dinero(v.total)}</strong>
                   </td>
-                  <td className="num">
+                  <td className="num t-accion">
                     <button
                       className="plano"
                       onClick={(e) => {

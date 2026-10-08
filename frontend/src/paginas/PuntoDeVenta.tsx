@@ -115,7 +115,7 @@ export function PuntoDeVenta() {
       <div className="encabezado">
         <div>
           <h1>Punto de venta</h1>
-          <p>Enter agrega lo buscado · F2 vuelve al buscador · el QR sale al cobrar</p>
+          <p className="solo-pc">Enter agrega lo buscado · F2 vuelve al buscador · el QR sale al cobrar</p>
         </div>
         {lineas.length > 0 && (
           <button className="plano" onClick={limpiar}>
@@ -124,7 +124,7 @@ export function PuntoDeVenta() {
         )}
       </div>
 
-      <div className="pos">
+      <div className={`pos${lineas.length ? " con-barra-cobro" : ""}`}>
         <div className="tarjeta pad">
           <EditorLineas lineas={lineas} setLineas={setLineas} fiscal refBuscador={buscador} />
         </div>
@@ -162,7 +162,7 @@ export function PuntoDeVenta() {
             <span className="num">{dinero(impuesto)}</span>
           </div>
           <div className="fila" style={{ justifyContent: "space-between", marginTop: 8 }}>
-            <span style={{ fontWeight: 700 }}>TOTAL</span>
+            <span style={{ fontWeight: 600 }}>Total</span>
             <span className="total-grande">{dinero(total)}</span>
           </div>
 
@@ -187,6 +187,22 @@ export function PuntoDeVenta() {
           </button>
         </div>
       </div>
+
+      {/* Celular: total y cobro siempre a la vista, encima de las pestañas. El
+          resumen completo (cliente, cobro, notas) sigue más abajo en la página. */}
+      {lineas.length > 0 && (
+        <div className="barra-cobro">
+          <div>
+            <small>
+              Total · {lineas.length} {lineas.length === 1 ? "línea" : "líneas"}
+            </small>
+            <div className="monto">{dinero(total)}</div>
+          </div>
+          <button className="primario" disabled={guardando} onClick={() => cobrar()}>
+            {guardando ? "Emitiendo…" : "Cobrar"}
+          </button>
+        </div>
+      )}
 
       {porConfirmar && (
         <Modal

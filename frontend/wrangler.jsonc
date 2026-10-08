@@ -15,5 +15,9 @@
     // El panel usa BrowserRouter: /ventas, /productos... no existen como
     // archivos. Sin esto, recargar en una de esas rutas daría 404.
     "not_found_handling": "single-page-application"
-  }
+  },
+  // Cada rama y PR genera su vista previa (`npx wrangler preview`); sin este
+  // bloque ese paso falla. Ojo: el origen de la vista previa no está en el CORS
+  // de la API, así que ahí se ve el diseño pero no se puede iniciar sesión.
+  "previews": {}
 }
